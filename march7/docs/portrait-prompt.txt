@@ -1,0 +1,6 @@
+Mode: built-in image_gen / identity-preserve
+Reference: assets/march7-preview.png
+Output: assets/march7-id.png
+Background: opaque
+
+Use case: identity-preserve. Edit the reference of March 7th from Honkai: Star Rail into a formal front-facing identification portrait for her fictional job resume. Retain original anime game illustration style, exact character identity, pastel pink shoulder length hair with cyan tips, gradient blue-pink eyes, original blue white outfit collar and black choker with gold fastening. Change pose to perfectly straight-on upright symmetrical head and shoulders, both eyes open looking at camera, small closed-mouth friendly smile. No hand, no wink, no weapon. Plain very pale cool gray background. Portrait 3:4 composition, entire head and hair fully in frame, modest upper chest shown, shoulders level. Clean polished official-game-like 2D cel shading, no text, no border, no logos. This is a derivative ID portrait, not a photo of a real person.

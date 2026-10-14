@@ -1,0 +1,9 @@
+Mode: built-in image_gen / precise-object-edit, followed by masked compositing.
+Input: original top-right portrait, local crop x=0,y=610,width=150,height=66, enlarged 6x for repair.
+Repair plate: assets/reference/march7-caption-repair.png
+Final: assets/march7-portrait-clean.png
+The full-portrait generated version was discarded. Only caption-mask pixels are replaced in the original decoded 522x676 image; all other pixels are copied unchanged.
+Rebuild: scripts/restore-original-portrait.cjs (Node.js + sharp).
+Verification: docs/portrait-pixel-check.json, outsideMaskChangedPixels must equal 0.
+
+Use case: precise-object-edit. This input is ONLY an enlarged crop of the bottom-left clothing corner of a portrait, not the whole portrait. Remove the white Chinese caption 「来一起拍照吗！」 across the lower part. Reconstruct the interrupted purple/pink jacket folds and the gray-white clothing underneath those letters. Preserve ALL visible boundaries, geometry, colors, shading, black outline positions, and the pixelated texture of this low-resolution source. Do not make a new portrait; there is no face in this crop. No new objects. Keep exactly the same framing and wide 900:396 aspect ratio. Output a clean, text-free repair plate matching this crop.
