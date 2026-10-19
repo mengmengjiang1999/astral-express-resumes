@@ -10,6 +10,7 @@
 | --- | --- | --- | --- |
 | 三月七 | [下载简历](march7/output/pdf/march7-resume.pdf) | [预览图](march7/output/pdf/march7-resume-preview.png) | [项目说明](march7/README.md) |
 | 开拓者 | [下载简历](trailblazer/stelle-cv.pdf) | [预览图](trailblazer/preview.png) | [项目说明](trailblazer/README.md) |
+| 开拓者 · 浅色版 | [下载简历](trailblazer-light/stelle-cv.pdf) | [预览图](trailblazer-light/preview.png) | [配色与编辑说明](trailblazer-light/README.md) |
 
 ### 三月七
 
@@ -18,6 +19,12 @@
 ### 开拓者
 
 ![开拓者简历](trailblazer/preview.png)
+
+### 开拓者 · 浅色版
+
+暖白底搭配炭灰文字、金色与酒红强调，保留深色版的全部内容、版式、边框、照片和车票装饰。
+
+![开拓者浅色简历](trailblazer-light/preview.png)
 
 ## 编辑与构建
 
@@ -37,6 +44,8 @@ python scripts/build.py
 cd trailblazer
 typst compile main.typ stelle-cv.pdf
 ```
+
+浅色版在 `trailblazer-light/` 中独立维护，编译方式相同；`template.typ` 和 `assets/frame.svg` 定义浅色配色。[600 dpi 高清图](trailblazer-light/stelle-cv-600dpi.png) 可直接下载。
 
 ## 素材与说明
 
