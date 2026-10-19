@@ -19,7 +19,7 @@
 ]
 
 #section("01", "技术栈", "COMBAT PATHS")
-#block(fill: panel, inset: 2.5mm)[
+#block(inset: 2.5mm)[
  #grid(columns: (28mm, 1fr), column-gutter: 3mm, row-gutter: 1.6mm, align: horizon,
   ..path-row("毁灭 · 物理", [以球棒实施单体与扩散打击，承担正面突破任务。]),
   ..path-row("存护 · 火", [以炎枪吸引火力、提供护盾，保护团队行动空间。]),

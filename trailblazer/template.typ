@@ -52,7 +52,7 @@
  #v(1.5mm)#text(size: sizes.body, body)
 ]
 #let skill(title, subtitle, body) = grid.cell(
- fill: panel, inset: (x: 2.5mm, y: 2mm), stroke: (top: 0.8pt + gold),
+ inset: (x: 2.5mm, y: 2mm), stroke: (top: 0.8pt + gold),
 )[
  #text(size: sizes.item, weight: "bold", fill: gold, title)
  #h(1.5mm)#text(size: 8pt, fill: muted, subtitle)
