@@ -1,0 +1,20 @@
+{
+  "nickname": "你的昵称",
+  "call_me": "填写称呼",
+  "location": "填写城市",
+  "tagline": "下一站，认识你。",
+  "favorites": "填写主推角色",
+  "fandoms": "填写同坑作品",
+  "looking_for": "填写想扩的同好",
+  "cp": "填写 CP 偏好 / 雷点",
+  "preferences": "填写相处习惯",
+  "contact_platform": "QQ / 微信",
+  "contact": "填写账号",
+  "uid": "填写游戏 UID",
+  "contact_note": "添加请备注：漫展 + 昵称",
+  "closing": "愿此行，终抵群星！",
+  "portrait": "assets/stelle-id.png",
+  "qr_image": null,
+  "event": "填写漫展 / 摊位",
+  "message": "留一句自我介绍"
+}

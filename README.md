@@ -26,6 +26,14 @@
 
 ![开拓者浅色简历](trailblazer-light/preview.png)
 
+## 漫展扩列条
+
+新增[开拓者扩列条模板](trailblazer-social-strip/README.md)，提供深色、浅色各一版及 A4 裁切拼版。80 × 180 mm 竖向长条，可填写昵称、主推、同好、相处偏好、联系方式与二维码，复用简历的配色、边框和车票元素。
+
+| 深色 | 浅色 | A4 打印 |
+| --- | --- | --- |
+| [PDF](trailblazer-social-strip/output/pdf/trailblazer-strip-dark.pdf) · [预览](trailblazer-social-strip/output/images/trailblazer-strip-dark-preview.png) | [PDF](trailblazer-social-strip/output/pdf/trailblazer-strip-light.pdf) · [预览](trailblazer-social-strip/output/images/trailblazer-strip-light-preview.png) | [双张裁切拼版](trailblazer-social-strip/output/pdf/trailblazer-strip-a4-print.pdf) |
+
 ## 编辑与构建
 
 三月七：修改 `march7/config/character.json` 中的内容，以及 `march7/config/theme.typ` 中的主题配置。详细依赖、字体和校验方式见角色目录内的 README。
