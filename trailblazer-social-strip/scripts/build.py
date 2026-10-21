@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build both editable strip themes, PNG exports, and a two-page A4 cut sheet."""
+"""Build adaptive-height strip themes, PNG exports, and an A4 cut sheet when they fit."""
 
 import argparse
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -24,13 +25,14 @@ from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[1]
 THEMES = ("dark", "light")
-TEXT_FIELDS = (
-    "nickname", "about_me", "location", "tagline", "favorites", "fandoms",
-    "same_fans", "looking_for", "cp", "boundaries", "preferences", "contact_platform", "contact", "uid",
-    "contact_note", "closing", "event", "message",
-)
+PARAGRAPH_FIELDS = frozenset((
+    "fandoms", "favorites", "interests", "cp", "looking_for", "boundaries",
+    "preferences", "event", "message",
+))
+ASSET_FIELDS = frozenset(("portrait", "qr_image"))
 STRIP_WIDTH = 80 * mm
-STRIP_HEIGHT = 180 * mm
+A4_MAX_HEIGHT = 267 * mm
+PRINT_SHEET_NAME = "trailblazer-strip-a4-print.pdf"
 
 
 def normalized(value):
@@ -54,6 +56,23 @@ def project_file(value, label):
     return path
 
 
+def project_directory(value, label):
+    """Resolve an output directory inside the project without creating it yet."""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} 必须是非空的项目内相对路径")
+    relative = Path(value)
+    if relative.is_absolute():
+        raise ValueError(f"{label} 不能使用绝对路径")
+    path = (ROOT / relative).resolve()
+    try:
+        path.relative_to(ROOT)
+    except ValueError as error:
+        raise ValueError(f"{label} 必须位于项目目录内") from error
+    if path.exists() and not path.is_dir():
+        raise ValueError(f"{label} 已存在且不是目录：{value}")
+    return path
+
+
 def load_profile(relative):
     source = project_file(relative, "--profile")
     try:
@@ -62,46 +81,68 @@ def load_profile(relative):
         raise ValueError(f"资料配置必须是有效的 UTF-8 JSON：{error}") from error
     if not isinstance(profile, dict):
         raise ValueError("资料配置必须是 JSON 对象")
-    for field in TEXT_FIELDS:
-        if field not in profile or not isinstance(profile[field], str):
-            raise ValueError(f"资料字段 {field} 必须存在且为字符串；不填时使用空字符串")
-    nickname = profile["nickname"].strip()
+    for obsolete in ("about_me", "same_fans"):
+        if obsolete in profile:
+            raise ValueError(f"资料字段 {obsolete} 已移除，请将内容移到 intro、interests 或 preferences")
+    for field, value in profile.items():
+        if field in ASSET_FIELDS or field == "show_qr":
+            continue
+        if field in PARAGRAPH_FIELDS and isinstance(value, list):
+            if not all(isinstance(item, str) for item in value):
+                raise ValueError(f"资料字段 {field} 的数组元素必须全为字符串，每项为一段")
+        elif not isinstance(value, str):
+            allowed = "字符串或字符串数组" if field in PARAGRAPH_FIELDS else "字符串"
+            raise ValueError(f"资料字段 {field} 必须为{allowed}；不填时省略或使用空字符串")
+    nickname = profile.get("nickname", "").strip()
     if not nickname:
         raise ValueError("nickname 不能为空")
-    if len(nickname) > 8:
-        raise ValueError("nickname 最多 8 个字符，请精简昵称后重新构建")
-    project_file(profile.get("portrait"), "portrait")
-    if "qr_image" not in profile:
-        raise ValueError("缺少 qr_image 字段；未设置二维码时使用 null")
-    if profile["qr_image"] is not None:
+    if len(nickname) > 24:
+        raise ValueError("nickname 最多 24 个字符，请精简昵称后重新构建")
+    if not isinstance(profile.get("show_qr", True), bool):
+        raise ValueError("show_qr 必须为 true 或 false")
+    project_file(profile.get("portrait", "assets/stelle-id.png"), "portrait")
+    if profile.get("qr_image") is not None:
         project_file(profile["qr_image"], "qr_image")
     return source, profile
+
+
+def actual_text(profile):
+    """Yield each supplied paragraph separately, skipping hidden structural values."""
+    for field, value in profile.items():
+        if field in ASSET_FIELDS or field == "show_qr":
+            continue
+        values = value if isinstance(value, list) else [value]
+        for index, paragraph in enumerate(values):
+            if isinstance(paragraph, str) and normalized(paragraph):
+                label = f"{field}[{index}]" if isinstance(value, list) else field
+                yield label, normalized(paragraph)
 
 
 def validate_strip(data, profile, theme):
     reader = PdfReader(io.BytesIO(data))
     if len(reader.pages) != 1:
-        raise ValueError(f"{theme} 产生了 {len(reader.pages)} 页；请精简资料，未覆盖成品")
+        raise ValueError(f"{theme} 产生了 {len(reader.pages)} 页；扩列条应随内容增长为单页，未覆盖成品")
     page = reader.pages[0]
-    if (abs(float(page.mediabox.width) - STRIP_WIDTH) > 0.1
-            or abs(float(page.mediabox.height) - STRIP_HEIGHT) > 0.1):
-        raise ValueError(f"{theme} 成品尺寸不是 80 × 180 mm，未覆盖成品")
+    width, height = float(page.mediabox.width), float(page.mediabox.height)
+    if not math.isfinite(width) or abs(width - STRIP_WIDTH) > 0.1:
+        raise ValueError(f"{theme} 成品宽度不是 80 mm，未覆盖成品")
+    if not math.isfinite(height) or height <= 0:
+        raise ValueError(f"{theme} 成品高度无效，未覆盖成品")
     text = normalized(page.extract_text() or "")
-    for field, value in profile.items():
-        if field in ("portrait", "qr_image") or not isinstance(value, str):
-            continue
-        expected = normalized(value)
-        if expected and expected not in text:
+    for field, expected in actual_text(profile):
+        if expected not in text:
             raise ValueError(f"{theme} 的 {field} 内容未完整出现在 PDF 中，未覆盖成品")
+    return {"width_pt": width, "height_pt": height,
+            "width_mm": round(width / mm, 3), "height_mm": round(height / mm, 3)}
 
 
-def crop_marks(sheet, x, y):
-    """Crop ticks stay outside the finished 80 × 180 mm strip."""
+def crop_marks(sheet, x, y, height):
+    """Crop ticks stay outside the actual strip dimensions."""
     gap, length = 1 * mm, 3 * mm
     sheet.setStrokeColorRGB(0.36, 0.36, 0.36)
     sheet.setLineWidth(0.35)
     for edge_x in (x, x + STRIP_WIDTH):
-        for edge_y in (y, y + STRIP_HEIGHT):
+        for edge_y in (y, y + height):
             direction_x = -1 if edge_x == x else 1
             direction_y = -1 if edge_y == y else 1
             sheet.line(edge_x + direction_x * gap, edge_y,
@@ -110,22 +151,23 @@ def crop_marks(sheet, x, y):
                        edge_x, edge_y + direction_y * (gap + length))
 
 
-def make_print_sheet(pdfs, target, profile):
+def make_print_sheet(pdfs, dimensions, target, profile):
     """Place two vector copies per A4 page, without scaling or rasterization."""
     pdfmetrics.registerFont(TTFont("StripSans", str(ROOT / "assets/fonts/NotoSansSC.ttf")))
     base = io.BytesIO()
     sheet = canvas.Canvas(base, pagesize=A4, pageCompression=1)
-    y = 58.5 * mm
     positions = (20 * mm, 110 * mm)
     for theme in THEMES:
+        height = dimensions[theme]["height_pt"]
+        y = (A4[1] - height) / 2
         sheet.setFillColorRGB(1, 1, 1)
         sheet.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
         sheet.setFillColorRGB(0.35, 0.35, 0.35)
         sheet.setFont("StripSans", 9)
-        sheet.drawCentredString(A4[0] / 2, 267 * mm,
-                                f"{theme.upper()} / Print at 100% (80 x 180 mm)")
+        sheet.drawCentredString(A4[0] / 2, 289 * mm,
+                                f"{theme.upper()} / Print at 100% (80 x {height / mm:.1f} mm)")
         for x in positions:
-            crop_marks(sheet, x, y)
+            crop_marks(sheet, x, y, height)
         sheet.showPage()
     sheet.save()
     base.seek(0)
@@ -134,6 +176,7 @@ def make_print_sheet(pdfs, target, profile):
     for index, theme in enumerate(THEMES):
         page = reader.pages[index]
         strip = PdfReader(io.BytesIO(pdfs[theme])).pages[0]
+        y = (A4[1] - dimensions[theme]["height_pt"]) / 2
         for x in positions:
             page.merge_transformed_page(strip, Transformation().translate(tx=x, ty=y))
         writer.add_page(page)
@@ -166,19 +209,25 @@ def publish(source, destination):
             temporary.unlink(missing_ok=True)
 
 
-def make_comparison(pdfs, target):
+def make_comparison(pdfs, dimensions, target):
     """Side-by-side proof used only to render the two-theme PNG preview."""
     writer = PdfWriter()
-    page = writer.add_blank_page(width=172 * mm, height=188 * mm)
+    maximum_height = max(item["height_pt"] for item in dimensions.values())
+    page = writer.add_blank_page(width=172 * mm, height=maximum_height + 8 * mm)
     for theme, x in zip(THEMES, (4 * mm, 88 * mm)):
         source = PdfReader(io.BytesIO(pdfs[theme])).pages[0]
-        page.merge_transformed_page(source, Transformation().translate(tx=x, ty=4 * mm))
+        y = maximum_height - dimensions[theme]["height_pt"] + 4 * mm
+        page.merge_transformed_page(source, Transformation().translate(tx=x, ty=y))
     with target.open("wb") as handle:
         writer.write(handle)
 
 
-def build(profile_path):
+def build(profile_path, output_path="output"):
     source, profile = load_profile(profile_path)
+    output = project_directory(output_path, "--output-dir")
+    previous_print_sheet = output / "pdf" / PRINT_SHEET_NAME
+    if previous_print_sheet.is_dir():
+        raise ValueError(f"A4 输出路径被同名目录占用：{previous_print_sheet}")
     fonts = ROOT / "assets/fonts"
     if not fonts.is_dir() or not any(fonts.glob("*.ttf")):
         raise ValueError("缺少 assets/fonts 中的随包字体")
@@ -190,6 +239,8 @@ def build(profile_path):
     with tempfile.TemporaryDirectory(prefix="trailblazer-strip-") as temporary:
         staging = Path(temporary)
         pdfs = {}
+        dimensions = {}
+        theme_manifest = {}
         outputs = []
         for theme in THEMES:
             pdf = typst.compile(
@@ -197,12 +248,20 @@ def build(profile_path):
                 font_paths=[str(fonts)], ignore_system_fonts=True,
                 sys_inputs={"theme": theme, "profile": source.relative_to(ROOT).as_posix()},
             )
-            validate_strip(pdf, profile, theme)
+            dimensions[theme] = validate_strip(pdf, profile, theme)
             pdfs[theme] = pdf
             stem = f"trailblazer-strip-{theme}"
             draft = staging / f"{stem}.pdf"
             draft.write_bytes(pdf)
-            outputs.append((draft, ROOT / "output/pdf" / draft.name))
+            outputs.append((draft, output / "pdf" / draft.name))
+            theme_manifest[theme] = {
+                "width_mm": dimensions[theme]["width_mm"],
+                "height_mm": dimensions[theme]["height_mm"],
+                "pages": 1,
+                "pdf": f"pdf/{draft.name}",
+                "preview": f"images/{stem}-preview.png",
+                "image_600dpi": f"images/{stem}-600dpi.png",
+            }
             for dpi, suffix in ((180, "preview"), (600, "600dpi")):
                 image_stem = staging / f"{stem}-{suffix}"
                 subprocess.run([renderer, "-r", str(dpi), "-png", "-singlefile",
@@ -210,31 +269,61 @@ def build(profile_path):
                 image = image_stem.with_suffix(".png")
                 if not image.is_file() or image.stat().st_size == 0:
                     raise ValueError(f"{theme} 的 {suffix} 图片导出失败，未覆盖成品")
-                outputs.append((image, ROOT / "output/images" / image.name))
-        print_sheet = staging / "trailblazer-strip-a4-print.pdf"
-        make_print_sheet(pdfs, print_sheet, profile)
-        outputs.append((print_sheet, ROOT / "output/pdf" / print_sheet.name))
+                outputs.append((image, output / "images" / image.name))
+        a4_available = all(item["height_pt"] <= A4_MAX_HEIGHT + 0.01
+                           for item in dimensions.values())
+        if a4_available:
+            print_sheet = staging / PRINT_SHEET_NAME
+            make_print_sheet(pdfs, dimensions, print_sheet, profile)
+            outputs.append((print_sheet, output / "pdf" / print_sheet.name))
         comparison = staging / "comparison.pdf"
-        make_comparison(pdfs, comparison)
+        make_comparison(pdfs, dimensions, comparison)
         comparison_image = staging / "trailblazer-strip-comparison"
         subprocess.run([renderer, "-r", "180", "-png", "-singlefile",
                         str(comparison), str(comparison_image)], check=True)
         outputs.append((comparison_image.with_suffix(".png"),
-                        ROOT / "output/images/trailblazer-strip-comparison.png"))
+                        output / "images/trailblazer-strip-comparison.png"))
+        manifest = {
+            "profile": source.relative_to(ROOT).as_posix(),
+            "themes": theme_manifest,
+            "comparison": "images/trailblazer-strip-comparison.png",
+            "a4": {
+                "available": a4_available,
+                "max_strip_height_mm": 267,
+                "pdf": f"pdf/{PRINT_SHEET_NAME}" if a4_available else None,
+                "pages": 2 if a4_available else 0,
+                "copies_per_page": 2,
+                "scale": 1,
+                "reason": ("两版高度均不超过 267 mm，可按实际尺寸打印"
+                           if a4_available else "至少一版高度超过 267 mm，未缩放或裁切，不生成 A4 拼版"),
+            },
+        }
+        manifest_path = staging / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         for original, destination in outputs:
             publish(original, destination)
-    print("PASS: 深浅两版均为单页 80 × 180 mm，所有非空资料字段完整；已生成 180/600 dpi PNG。")
-    print("PASS: A4 拼版共两页，每页两张同色扩列条，保持原尺寸；打印请选择 100% / 实际大小。")
-    print(ROOT / "output")
+        if not a4_available:
+            previous_print_sheet.unlink(missing_ok=True)
+        publish(manifest_path, output / "manifest.json")
+    for theme in THEMES:
+        print(f"PASS: {theme} 为单页 80 × {dimensions[theme]['height_mm']:g} mm，所有非空资料字段完整。")
+    print("PASS: 已生成 180/600 dpi PNG、自适应高度的对照图及 manifest.json。")
+    if a4_available:
+        print("PASS: A4 拼版共两页，每页两张同色扩列条，保持原尺寸；打印请选择 100% / 实际大小。")
+    else:
+        print("提示：至少一版高度超过 267 mm，本次仅导出长条 PDF/PNG，不生成 A4 拼版；目标目录中旧的 A4 文件已清除。")
+    print(output)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", default="config/profile.json",
                         help="项目内的资料 JSON 相对路径（默认：config/profile.json）")
+    parser.add_argument("--output-dir", default="output",
+                        help="项目内的输出目录（默认：output；样例可另选目录以免覆盖正式稿）")
     args = parser.parse_args()
     try:
-        build(args.profile)
+        build(args.profile, args.output_dir)
     except Exception as error:
         print(f"构建失败：{error}", file=sys.stderr)
         return 1

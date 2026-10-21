@@ -1,6 +1,6 @@
 # 开拓者 · 漫展扩列条模板
 
-沿用开拓者简历的金色、酒红、双线斜角边框与列车票装饰，提供深色和浅色两版。成品尺寸 **80 × 180 mm**，竖向长条；两版共用同一份资料和排版，所有内容区均不填底色，仅章节标题带分区。
+沿用开拓者简历的金色、酒红、双线斜角边框与列车票装饰，提供深色和浅色两版。**宽度固定为 80 mm，高度随内容自动伸缩**。正文固定为 9 pt，字段标题 9.5 pt，章节标题 11.2 pt；长内容通过换行、分段和延长条幅容纳。所有正文区不填底色，仅章节标题带分区。
 
 ## 成品
 
@@ -11,93 +11,114 @@
 | 深色 | [下载](output/pdf/trailblazer-strip-dark.pdf) | [查看](output/images/trailblazer-strip-dark-preview.png) | [600 dpi](output/images/trailblazer-strip-dark-600dpi.png) |
 | 浅色 | [下载](output/pdf/trailblazer-strip-light.pdf) | [查看](output/images/trailblazer-strip-light-preview.png) | [600 dpi](output/images/trailblazer-strip-light-600dpi.png) |
 
-[A4 裁切拼版](output/pdf/trailblazer-strip-a4-print.pdf)：两页分别为深色与浅色，每页放置两张同色扩列条，带裁切标记。按 **100% / 实际大小** 打印，不选“适合页面”。单张 PDF 为净尺寸、无出血；拼版用于普通打印后裁切。专业印刷如需出血，按印厂要求另行处理。
+默认资料另有 [A4 裁切拼版](output/pdf/trailblazer-strip-a4-print.pdf)：两页分别为深色与浅色，每页两张，带裁切标记。按 **100% / 实际大小** 打印，不选“适合页面”。实际尺寸记录在 [manifest.json](output/manifest.json) 中。
+
+## 长短内容如何适配
+
+![同一模板的三种长度](output/images/trailblazer-strip-lengths.png)
+
+- **短版**：[config/examples/short.json](config/examples/short.json)，只填写喜欢的作品、角色、其他兴趣和联系方式。
+- **常规版**：[config/profile.json](config/profile.json)，带分组喜好、日常与互动说明、二维码占位。
+- **长版**：[config/examples/long.json](config/examples/long.json)，展示多段作品与角色介绍、其他兴趣和较长的相处说明。全部文字都是填写示例。
+
+三种长度使用同一份排版，不需要手动选择尺寸。单行内容保持左右排版；多段、含换行或较长的内容改为标题在上、正文在下，并使用完整正文宽度。空字段、空段落和整组空内容自动隐藏，章节编号自动连续。边框、底部斜角和车票随页面高度调整。
+
+长条 PDF 和 PNG 保持完整内容。**高度超过 267 mm 时，不生成 A4 拼版**，构建会提示并移除该输出目录旧的 A4 文件，避免误印。可用长图在线分享，或将单张 PDF 按实际尺寸交给支持长条纸张的打印服务。单张 PDF 是净尺寸、无出血；专业印刷所需出血按印厂要求另行处理。
 
 ## 填写资料
 
-编辑 `config/profile.json`，构建一次即可更新两种配色。
+编辑 `config/profile.json`，一次构建同时更新两种配色。“个人属性”指喜欢的作品、人物和其他事物；模板不设置“同担接受情况”一栏。
 
 | 字段 | 用途 |
 | --- | --- |
-| `nickname` | 昵称 / CN，最多 8 个字符 |
-| `about_me`、`location` | 个人属性（可写性格、MBTI 或年龄段）、常驻城市或出没地 |
-| `tagline` | 页首邀请短句，默认“下一站，认识你。” |
-| `fandoms`、`favorites` | 主坑作品 / 游戏、主推角色 |
-| `same_fans`、`looking_for` | 同担接受情况、想认识的同好或一起做的事 |
-| `cp`、`boundaries`、`preferences` | CP 态度（嗑哪些、不嗑或拒所有 CP）、其他雷点 / 边界、相处习惯，分别填写 |
-| `contact_platform`、`contact` | 联系平台与账号 |
-| `uid` | 游戏 UID |
+| `nickname` | 昵称 / CN，必填，最多 24 个字符；长昵称可换行 |
+| `intro`、`location` | 页首一句自我介绍、常驻城市，均可省略 |
+| `tagline` | 页首邀请短句 |
+| `fandoms` | 主坑：喜欢的游戏、动漫、小说、电影或圈子 |
+| `favorites` | 我推：喜欢的角色、组合、人物，可按作品分组 |
+| `interests` | 兴趣：音乐、阅读、摄影、手作、娃娃等其他喜欢的事物 |
+| `looking_for` | 想扩：想认识什么样的朋友、想一起做什么 |
+| `cp` | 可选的 CP 态度：具体嗑的 CP、不嗑、拒所有 CP；留空则整行隐藏 |
+| `preferences` | 日常：空间 / 朋友圈会分享什么、回复与互动习惯 |
+| `boundaries` | NG：希望避开的话题或行为，按需填写 |
+| `contact_platform`、`contact` | 联系平台与账号，均可省略 |
+| `uid` | 可选的游戏 UID；不填时隐藏 |
 | `contact_note` | 添加好友时的备注要求 |
-| `event`、`message` | 相遇漫展 / 摊位、一句自我介绍或现场留言 |
+| `event`、`message` | 可选的漫展 / 日期 / 摊位、留言 |
 | `closing` | 页脚短句 |
-| `portrait` | 头像图片的项目内相对路径 |
-| `qr_image` | 联系二维码路径；尚未提供时为 `null` |
+| `portrait` | 头像的项目内相对路径；省略时使用开拓者头像 |
+| `show_qr` | 是否展示二维码区，默认 `true`；只留账号时可设为 `false` |
+| `qr_image` | 二维码图片路径；省略或为 `null` 时展示明确的待替换框 |
 
-默认的“你的昵称”“填写主推角色”等均是模板占位；以“例：”开头的短句只是写法示例，不代表使用者真实资料。昵称处直接填 CN，不再显示主题说明。各行留有细线；将主坑、我推、同担、想扩、CP 态度、雷点、相处、相遇或留言设为 `""`，可保留空白横线用于手写。长内容可自然换行，但建议每项只写一条短句；如果超过一页，构建会拒绝覆盖成品，应精简内容。
-
-### 怎样写得像一张扩列条
-
-先让对方看清“你是谁、喜欢什么、能一起做什么”，再补充必要的相处偏好。以下都是可自行选择或改写的例子，不需要全部照填：
-
-| 位置 | 填写思路与示例 |
-| --- | --- |
-| 昵称 / 属性 / 坐标 | CN + 两三个自我标签 + 常驻城市；属性可写“慢热 / INFP”，也可以留空 |
-| 主坑 / 我推 | 主坑写作品、我推写角色，例如“星穹铁道 / 其他作品”与“开拓者 / 其他角色” |
-| 同担 | 独立说明同推同一角色是否可以扩，例如“同担欢迎”或“同担慎扩”；按自己的真实偏好填写 |
-| 想扩 | 写可聊、可一起做的事，例如“同坑聊天 / 同城约展”“聊剧情 / 游戏搭子” |
-| CP 态度 / 雷点 | 可以写具体嗑的 CP、“不嗑 CP”或“拒所有 CP”，无需一定有喜欢的配对；其他雷点单独填写 |
-| 相处 | 写实际的互动习惯，例如“慢热 / 随缘回消息”“可躺列 / 熟后话多”，不必罗列长规则 |
-| 留言 / 联系方式 | 留一句邀请、账号或二维码，以及“漫展 + CN”的好友验证备注；游戏 UID 可留空 |
-
-“CP 态度”中的示例是不同选项，使用时选择符合自己的情况，不要整行照填。若不希望接触任何 CP 内容，可以直接写“拒所有 CP”；单写“不嗑 CP”或留空，不会自动表达这一边界。模板不预设使用者嗑 CP，也不预设使用者拒绝所有 CP。
-
-### 内容参考
-
-2026-10-21 查阅公开扩列自介与模板，参考其信息组织方式，未复制他人的姓名、账号、个人经历或完整文案：
-
-- [QooApp：扩列扩列！！！](https://notes.qoo-app.com/note/3531703)：昵称、坐标、主坑、主推、同担接受情况与雷点分别交代，因此增加独立的“同担”一行。
-- [微博：扩列条 / 属性表](https://www.weibo.com/6758518172/Po80ayv20)：将我推、CP 偏好、希望结识的人与个人社交习惯分开表达，参考这种区分拆开“CP”和“雷点”。
-- [二次元扩列自介条生成器](https://ivanamamiya.github.io/self-intro-template/)：按基础信息、主坑、扩列诉求和边界分区，参考其短句形式，为“想扩”和“相处”提供填写示例。
-
-本模板面向漫展小卡，只保留适合快速浏览的字段，主题感由配色、头像、边框和车票表达。
-
-二维码区域是明确标注的待替换框，不是可扫描的假码。使用时将完整二维码图放入 `assets/`，例如 `assets/contact-qr.png`，然后设置：
+除昵称外，文本字段可以省略或设为 `""`。主坑、我推、兴趣、想扩、CP 态度、日常、NG、出没和留言还支持字符串数组，每项是一段。以下两种写法都可以：
 
 ```json
+"fandoms": "星穹铁道 / 喜欢的动漫 / 最近在读的小说"
+```
+
+```json
+"fandoms": [
+  "游戏：填写常玩的游戏，也可以补充最近回坑的作品。",
+  "动漫 / 小说：填写喜欢的作品，可以继续添加段落。",
+  "其他圈子：填写音乐、电影、原创角色等。"
+]
+```
+
+字符串中也可以用 `\n` 手动换行。想删除一个条目，可删掉整个键，或使用 `""`、`[]`。不会为已删除的条目保留空行。
+
+“CP 态度”不要求一定有喜欢的配对。想明确不接触任何 CP 内容时，可以填“拒所有 CP”；“不嗑 CP”与拒绝接触所有 CP 并不等同。默认模板将该项留空，长版仅展示一种可替换的例子，不预设使用者的立场。
+
+模板中的“填写……”及以“例：”开头的文字均是占位或填写示例。没有复制参考扩列条中的个人姓名、经历、账号、照片或二维码。填写完成后请删除“填写”“例”等提示词。
+
+### 联系二维码
+
+二维码区域是明确标注的待替换框，不是可扫描的假码。将完整二维码放入 `assets/`，然后设置：
+
+```json
+"show_qr": true,
 "qr_image": "assets/contact-qr.png"
 ```
 
-二维码展示区为 28 × 28 mm 白底框，图像在其中以 24 × 24 mm 等比显示，并保留额外白边；请使用包含完整静区的原始二维码，不裁去自身白边，打印后用手机实际扫码确认。公开发布模板时保留默认占位；个人填写版可本地导出，不必将真实账号与二维码提交到公开仓库。
+二维码展示区为 28 × 28 mm 白底框，图像在其中以 24 × 24 mm 等比显示，并保留额外白边。请使用保留完整静区的二维码，打印后实际扫码确认。公开模板保留占位；个人填写版可在本地导出，无需把真实账号和二维码提交到公开仓库。
 
 ## 构建
 
-需要 Python 3.9+，首次安装依赖需联网；字体和素材均随项目保存，后续编译无需远程 Typst 包。
+需要 Python 3.9+、Poppler（提供 `pdftoppm`）。首次安装依赖需联网，字体和素材均随项目保存，后续编译无需远程 Typst 包。
 
 ```sh
 cd trailblazer-social-strip
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-# 安装 Poppler 后，生成两版 PDF、预览、600 dpi 图及 A4 拼版
 python scripts/build.py
 ```
 
-Windows 激活命令为 `.venv\Scripts\activate`。Poppler 需提供 `pdftoppm`；macOS 可通过 `brew install poppler` 安装。脚本从自身位置解析项目目录，不依赖当前工作目录。
+Windows 激活命令为 `.venv\Scripts\activate`；macOS 可通过 `brew install poppler` 安装 Poppler。构建脚本从自身位置解析项目目录，不依赖当前工作目录。
 
-也可以用 Typst CLI 单独编译：
+导出不同长度时，为每份资料选择自己的输出目录，避免覆盖默认成品：
+
+```sh
+python scripts/build.py --profile config/examples/short.json --output-dir output/short
+python scripts/build.py --profile config/examples/long.json --output-dir output/long
+```
+
+每次构建都会生成两版 PDF、180 dpi 预览、600 dpi 图片、配色对照图和 `manifest.json`。可放入 A4 时另生成拼版。发布输出前会检查单页、80 mm 宽以及全部非空资料文字是否完整。
+
+也可以用 Typst CLI 单独编译，页面高度同样自动适配：
 
 ```sh
 typst compile --root . --font-path assets/fonts --ignore-system-fonts --input theme=dark main.typ output/pdf/trailblazer-strip-dark.pdf
 typst compile --root . --font-path assets/fonts --ignore-system-fonts --input theme=light main.typ output/pdf/trailblazer-strip-light.pdf
 ```
 
-在线编辑时上传整个目录并保留层级，入口为 `main.typ`；无输入时默认深色。在线编辑器也可直接将入口中的默认 `"dark"` 改为 `"light"`。常规调整只需修改 `config/profile.json`；颜色位于 `config/themes.typ`，版式位于 `components/strip.typ`。
+在线编辑时上传整个目录并保留层级，入口为 `main.typ`，无输入时默认深色。颜色位于 `config/themes.typ`，排版位于 `components/strip.typ`。
 
-## 素材与字体
+## 内容与素材
 
-- 肖像和透明车票直接复制自仓库中已确认的开拓者简历，文件像素未改变；照片等比展示，车票放在页面右侧边缘。
-- 车票是参考角色胸前装饰重绘的素材，不是游戏原始导出文件；来源说明见[开拓者简历](../trailblazer/README.md)。
-- 原简历的双线与斜角边框语言适配为 80 × 180 mm 长条，保留暖炭灰 / 暖白、金色和酒红的两套配色。
-- “下一站，认识你”“共同航向”“同行小约定”“下一站见”为本模板创作文案，不标注为游戏角色原台词。
-- 使用随包 Noto Sans SC 和 Noto Serif CJK SC Bold，保留 `assets/fonts/` 中的 SIL OFL 许可；不依赖系统中文字体。
+- 内容结构采用“简短自介、喜欢的事物、相处说明、联系方式”。参考公开扩列自介及提供的长短例图中的内容分类，保留本项目原有排版风格。
+- 公开内容参考：[QooApp 扩列自介](https://notes.qoo-app.com/note/3531703)、[微博属性表](https://www.weibo.com/6758518172/Po80ayv20)、[扩列自介模板](https://ivanamamiya.github.io/self-intro-template/)。只参考字段与分组方式。
+- 肖像和透明车票直接复制自已确认的开拓者简历，图片像素未改变；车票是参考角色胸前装饰重绘的素材，来源说明见[开拓者简历](../trailblazer/README.md)。
+- 保留暖炭灰 / 暖白、金色、酒红两套配色，以及双线、斜角和边缘车票。
+- “下一站，认识你”“同行小约定”“下一站见”为模板文案，不标注为游戏角色原台词。
+- 随包使用 Noto Sans SC 和 Noto Serif CJK SC Bold，保留 `assets/fonts/` 中的 SIL OFL 许可。
 - 本项目为非官方同人模板，角色与游戏素材版权归原权利人所有。

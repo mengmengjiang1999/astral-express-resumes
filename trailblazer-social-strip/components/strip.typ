@@ -1,15 +1,32 @@
-// Only the border, header wash and edge ticket use independent positioning.
+// Decorations follow the measured page height; body content stays in normal flow.
 #let at(x, y, body) = place(top + left, dx: x, dy: y, body)
-#let decorations(c) = {
- at(0mm, 0mm, rect(width: 80mm, height: 54.5mm, fill: c.header, stroke: none))
- at(0mm, 0mm, rect(width: 0.9mm, height: 180mm, fill: c.red, stroke: none))
- at(3mm, 3mm, rect(width: 74mm, height: 174mm, fill: none, stroke: 0.45pt + c.border))
- at(4.2mm, 4.2mm, rect(width: 71.6mm, height: 171.6mm, fill: none, stroke: 0.2pt + c.border.transparentize(65%)))
+#let decorations(c, height, header-height) = {
+ at(0mm, 0mm, rect(width: 80mm, height: header-height, fill: c.header, stroke: none))
+ at(0mm, 0mm, rect(width: 0.9mm, height: height, fill: c.red, stroke: none))
+ at(3mm, 3mm, rect(width: 74mm, height: height - 6mm, fill: none, stroke: 0.45pt + c.border))
+ at(4.2mm, 4.2mm, rect(width: 71.6mm, height: height - 8.4mm, fill: none, stroke: 0.2pt + c.border.transparentize(65%)))
  at(3mm, 10mm, line(end: (7mm, -7mm), stroke: 0.45pt + c.border))
  at(70mm, 3mm, line(end: (7mm, 7mm), stroke: 0.45pt + c.border))
- at(3mm, 170mm, line(end: (7mm, 7mm), stroke: 0.45pt + c.border))
- at(70mm, 177mm, line(end: (7mm, -7mm), stroke: 0.45pt + c.border))
- at(72.2mm, 151mm, image("../assets/express-ticket-redrawn.png", height: 20mm))
+ at(3mm, height - 10mm, line(end: (7mm, 7mm), stroke: 0.45pt + c.border))
+ at(70mm, height - 3mm, line(end: (7mm, -7mm), stroke: 0.45pt + c.border))
+ at(72.2mm, height - 27mm, image("../assets/express-ticket-redrawn.png", height: 18mm))
+}
+
+#let paragraphs(value) = {
+ let values = if type(value) == array { value } else { (value,) }
+ values.filter(item => item.trim() != "")
+}
+#let present(value) = paragraphs(value).len() > 0
+#let prose(value, c) = {
+ for (i, paragraph) in paragraphs(value).enumerate() {
+  if i > 0 { v(1.6mm) }
+  par(justify: false)[
+   #for (j, row) in paragraph.split("\n").enumerate() {
+    if j > 0 { linebreak() }
+    text(size: 9pt, fill: c.ink, row)
+   }
+  ]
+ }
 }
 
 #let section(number, title, hint, c) = block(
@@ -23,20 +40,33 @@
  )
 ]
 
-#let entry(label, value, c, label-width: 10mm) = block(below: 1.7mm, breakable: false)[
- #grid(columns: (label-width, 1fr), column-gutter: 2mm, align: top,
-  text(size: 9.5pt, weight: "bold", fill: c.gold, label),
-  [#text(size: 9pt, fill: c.ink, if value == "" { [#h(1pt)] } else { value })
-   #v(1.3mm)
-   #line(length: 100%, stroke: 0.25pt + c.border.transparentize(35%))],
- )
-]
+// Short entries remain inline. Lists and longer prose get the full content width.
+#let entry(label, value, c) = if present(value) {
+ let items = paragraphs(value)
+ let stacked = items.len() > 1 or items.any(item => item.contains("\n") or item.clusters().len() > 28)
+ block(width: 100%, below: 2mm, breakable: false)[
+  #if stacked {
+   text(size: 9.5pt, weight: "bold", fill: c.gold, label)
+   v(1.5mm)
+   prose(value, c)
+   v(1.4mm)
+   line(length: 100%, stroke: 0.25pt + c.border.transparentize(35%))
+  } else {
+   grid(columns: (14mm, 1fr), column-gutter: 2mm, align: top,
+    text(size: 9.5pt, weight: "bold", fill: c.gold, label),
+    [#prose(value, c)
+     #v(1.4mm)
+     #line(length: 100%, stroke: 0.25pt + c.border.transparentize(35%))],
+   )
+  }
+ ]
+}
 
 #let qr-slot(profile, c, asset) = block(
  width: 28mm, height: 28mm, fill: white,
  stroke: 0.5pt + c.border, inset: 2mm,
 )[
- #if profile.qr_image != none {
+ #if profile.at("qr_image", default: none) != none {
   image(asset(profile.qr_image), width: 24mm, height: 24mm, fit: "contain")
  } else {
   align(center + horizon)[
@@ -49,63 +79,103 @@
 
 #let strip(profile, c, asset) = {
  set document(title: "开拓者 · 漫展扩列条", author: "非官方同人模板")
- set page(width: 80mm, height: 180mm, margin: (x: 7mm, top: 7mm, bottom: 7mm),
-  fill: c.paper, background: decorations(c))
  set text(font: "Noto Sans SC", size: 9pt, fill: c.ink, lang: "zh")
- set par(leading: 0.45em, spacing: 0pt)
+ set par(leading: 0.5em, spacing: 0pt)
  set block(spacing: 0pt)
- grid(columns: (1fr, auto), align: horizon,
-  text(size: 6.8pt, tracking: 0.9pt, fill: c.gold)[ASTRAL EXPRESS],
-  text(size: 7pt, weight: "bold", fill: c.gold)[同好扩列],
- )
- v(4mm)
- grid(columns: (1fr, 24mm), column-gutter: 5mm, align: horizon,
-  [#text(size: if profile.nickname.clusters().len() <= 4 { 22pt } else if profile.nickname.clusters().len() <= 6 { 17pt } else { 13pt },
-    font: "Noto Serif CJK SC", weight: "bold", profile.nickname)
-   #v(3mm)
-   #text(size: 8.5pt, fill: c.muted)[属性　#profile.about_me]
-   #v(1.8mm)
-   #text(size: 8.5pt, fill: c.muted)[坐标　#profile.location]
-  ],
-  block(stroke: 0.55pt + c.gold, inset: 1mm, fill: c.portrait)[
-   #image(asset(profile.portrait), width: 22mm, height: 33mm, fit: "contain")
-  ],
- )
- v(2.5mm)
- text(size: 10.5pt, fill: c.gold, profile.tagline)
-
- section("01", "共同航向", "主坑 / 我推", c)
- entry("主坑", profile.fandoms, c)
- entry("我推", profile.favorites, c)
- entry("同担", profile.same_fans, c)
- entry("想扩", profile.looking_for, c)
-
- section("02", "同行小约定", "相处偏好", c)
- entry("CP 态度", profile.cp, c, label-width: 14mm)
- entry("雷点", profile.boundaries, c, label-width: 14mm)
- entry("相处", profile.preferences, c, label-width: 14mm)
-
- section("03", "下一站见", "联系方式", c)
- grid(columns: (28mm, 1fr), column-gutter: 4mm, align: horizon,
-  qr-slot(profile, c, asset),
-  [#text(size: 9.5pt, weight: "bold", fill: c.gold, profile.contact_platform)
-   #v(1.8mm)
-   #text(size: 9pt, profile.contact)
-   #v(3mm)
-   #text(size: 8pt, fill: c.muted)[游戏 UID]
-   #v(1.2mm)
-   #text(size: 9pt, profile.uid)
-  ],
- )
- v(2mm)
- text(size: 7.5pt, fill: c.muted, profile.contact_note)
- v(4mm)
- block(width: 62mm)[
-  #entry("相遇", profile.event, c)
-  #entry("留言", profile.message, c)
+ let field(key) = profile.at(key, default: "")
+ let show-qr = profile.at("show_qr", default: true)
+ let header = [
+  #grid(columns: (1fr, auto), align: horizon,
+   text(size: 6.8pt, tracking: 0.9pt, fill: c.gold)[ASTRAL EXPRESS],
+   text(size: 7pt, weight: "bold", fill: c.gold)[同好扩列],
+  )
+  #v(4mm)
+  #grid(columns: (1fr, 24mm), column-gutter: 5mm, align: horizon,
+   [#text(size: if profile.nickname.clusters().len() <= 4 { 22pt } else if profile.nickname.clusters().len() <= 6 { 17pt } else { 13pt },
+     font: "Noto Serif CJK SC", weight: "bold", profile.nickname)
+    #if present(field("intro")) {
+     v(3mm)
+     text(size: 8.5pt, fill: c.muted, field("intro"))
+    }
+    #if present(field("location")) {
+     v(1.8mm)
+     text(size: 8.5pt, fill: c.muted)[坐标　#field("location")]
+    }
+   ],
+   block(stroke: 0.55pt + c.gold, inset: 1mm, fill: c.portrait)[
+    #image(asset(profile.at("portrait", default: "assets/stelle-id.png")), width: 22mm, height: 33mm, fit: "contain")
+   ],
+  )
+  #if present(field("tagline")) {
+   v(2.5mm)
+   text(size: 10.5pt, fill: c.gold, field("tagline"))
+  }
  ]
- v(1fr)
- line(length: 100%, stroke: 0.4pt + c.gold)
- v(2mm)
- align(center, text(size: 9pt, fill: c.gold, profile.closing))
+ let personal = (("主坑", "fandoms"), ("我推", "favorites"), ("兴趣", "interests"))
+ let social = (("想扩", "looking_for"), ("CP 态度", "cp"), ("日常", "preferences"), ("NG", "boundaries"))
+ let contact-details = [
+  #if present(field("contact_platform")) or present(field("contact")) {
+   if present(field("contact_platform")) {
+    text(size: 9.5pt, weight: "bold", fill: c.gold, field("contact_platform"))
+    v(1.8mm)
+   }
+   text(size: 9pt, field("contact"))
+  }
+  #if present(field("uid")) {
+   v(3mm)
+   text(size: 8pt, fill: c.muted)[游戏 UID]
+   v(1.2mm)
+   text(size: 9pt, field("uid"))
+  }
+ ]
+ let body = [
+  #header
+  #let number = 0
+  #if personal.any(item => present(field(item.at(1)))) {
+   number += 1
+   section("0" + str(number), "个人属性", "喜欢的事物", c)
+   for (label, key) in personal { entry(label, field(key), c) }
+  }
+  #if social.any(item => present(field(item.at(1)))) {
+   number += 1
+   section("0" + str(number), "同行小约定", "相处 / 边界", c)
+   for (label, key) in social { entry(label, field(key), c) }
+  }
+  #if show-qr or ("contact_platform", "contact", "uid", "contact_note", "event", "message").any(key => present(field(key))) {
+   number += 1
+   section("0" + str(number), "下一站见", "联系方式", c)
+   if show-qr {
+    if present(field("contact_platform")) or present(field("contact")) or present(field("uid")) {
+     grid(columns: (28mm, 1fr), column-gutter: 4mm, align: horizon,
+      qr-slot(profile, c, asset), contact-details)
+    } else {
+     qr-slot(profile, c, asset)
+    }
+   } else if present(field("contact_platform")) or present(field("contact")) or present(field("uid")) {
+    contact-details
+   }
+   if present(field("contact_note")) {
+    v(2mm)
+    text(size: 7.5pt, fill: c.muted, field("contact_note"))
+   }
+   if present(field("event")) or present(field("message")) {
+    v(3mm)
+    entry("出没", field("event"), c)
+    entry("留言", field("message"), c)
+   }
+  }
+  #v(5mm)
+  #line(length: 100%, stroke: 0.4pt + c.gold)
+  #if present(field("closing")) {
+   v(2mm)
+   align(center, text(size: 9pt, fill: c.gold, field("closing")))
+  }
+ ]
+ // Measure once at the final content width; no font shrinking or page clipping.
+ context {
+  let height = measure(body, width: 65mm).height + 14.5mm
+  let header-height = measure(header, width: 65mm).height + 8.5mm
+  page(width: 80mm, height: height, margin: (left: 7mm, right: 8mm, top: 7mm, bottom: 7mm),
+   fill: c.paper, background: decorations(c, height, header-height), body)
+ }
 }

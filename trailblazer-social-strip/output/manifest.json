@@ -1,0 +1,31 @@
+{
+  "profile": "config/profile.json",
+  "themes": {
+    "dark": {
+      "width_mm": 80.0,
+      "height_mm": 172.128,
+      "pages": 1,
+      "pdf": "pdf/trailblazer-strip-dark.pdf",
+      "preview": "images/trailblazer-strip-dark-preview.png",
+      "image_600dpi": "images/trailblazer-strip-dark-600dpi.png"
+    },
+    "light": {
+      "width_mm": 80.0,
+      "height_mm": 172.128,
+      "pages": 1,
+      "pdf": "pdf/trailblazer-strip-light.pdf",
+      "preview": "images/trailblazer-strip-light-preview.png",
+      "image_600dpi": "images/trailblazer-strip-light-600dpi.png"
+    }
+  },
+  "comparison": "images/trailblazer-strip-comparison.png",
+  "a4": {
+    "available": true,
+    "max_strip_height_mm": 267,
+    "pdf": "pdf/trailblazer-strip-a4-print.pdf",
+    "pages": 2,
+    "copies_per_page": 2,
+    "scale": 1,
+    "reason": "两版高度均不超过 267 mm，可按实际尺寸打印"
+  }
+}
