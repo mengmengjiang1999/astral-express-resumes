@@ -81,9 +81,9 @@
  entry("想扩", profile.looking_for, c)
 
  section("02", "同行小约定", "相处偏好", c)
- entry("CP", profile.cp, c)
- entry("雷点", profile.boundaries, c)
- entry("相处", profile.preferences, c)
+ entry("CP 态度", profile.cp, c, label-width: 14mm)
+ entry("雷点", profile.boundaries, c, label-width: 14mm)
+ entry("相处", profile.preferences, c, label-width: 14mm)
 
  section("03", "下一站见", "联系方式", c)
  grid(columns: (28mm, 1fr), column-gutter: 4mm, align: horizon,
