@@ -25,8 +25,8 @@ from reportlab.pdfgen import canvas
 ROOT = Path(__file__).resolve().parents[1]
 THEMES = ("dark", "light")
 TEXT_FIELDS = (
-    "nickname", "call_me", "location", "tagline", "favorites", "fandoms",
-    "looking_for", "cp", "preferences", "contact_platform", "contact", "uid",
+    "nickname", "about_me", "location", "tagline", "favorites", "fandoms",
+    "same_fans", "looking_for", "cp", "boundaries", "preferences", "contact_platform", "contact", "uid",
     "contact_note", "closing", "event", "message",
 )
 STRIP_WIDTH = 80 * mm

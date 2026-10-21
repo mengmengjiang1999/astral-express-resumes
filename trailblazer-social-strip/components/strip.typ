@@ -60,14 +60,12 @@
  )
  v(4mm)
  grid(columns: (1fr, 24mm), column-gutter: 5mm, align: horizon,
-  [#text(size: 8pt, fill: c.gold)[开拓者主题]
-   #v(2.4mm)
-   #text(size: if profile.nickname.clusters().len() <= 4 { 22pt } else if profile.nickname.clusters().len() <= 6 { 17pt } else { 13pt },
+  [#text(size: if profile.nickname.clusters().len() <= 4 { 22pt } else if profile.nickname.clusters().len() <= 6 { 17pt } else { 13pt },
     font: "Noto Serif CJK SC", weight: "bold", profile.nickname)
    #v(3mm)
-   #text(size: 8.5pt, fill: c.muted)[称呼　#profile.call_me]
+   #text(size: 8.5pt, fill: c.muted)[属性　#profile.about_me]
    #v(1.8mm)
-   #text(size: 8.5pt, fill: c.muted)[出没　#profile.location]
+   #text(size: 8.5pt, fill: c.muted)[坐标　#profile.location]
   ],
   block(stroke: 0.55pt + c.gold, inset: 1mm, fill: c.portrait)[
    #image(asset(profile.portrait), width: 22mm, height: 33mm, fit: "contain")
@@ -76,14 +74,16 @@
  v(2.5mm)
  text(size: 10.5pt, fill: c.gold, profile.tagline)
 
- section("01", "共同航向", "同好 / 主推", c)
- entry("主推", profile.favorites, c)
- entry("同坑", profile.fandoms, c)
+ section("01", "共同航向", "主坑 / 我推", c)
+ entry("主坑", profile.fandoms, c)
+ entry("我推", profile.favorites, c)
+ entry("同担", profile.same_fans, c)
  entry("想扩", profile.looking_for, c)
 
  section("02", "同行小约定", "相处偏好", c)
- entry("CP / 雷点", profile.cp, c, label-width: 17mm)
- entry("相处", profile.preferences, c, label-width: 17mm)
+ entry("CP", profile.cp, c)
+ entry("雷点", profile.boundaries, c)
+ entry("相处", profile.preferences, c)
 
  section("03", "下一站见", "联系方式", c)
  grid(columns: (28mm, 1fr), column-gutter: 4mm, align: horizon,
