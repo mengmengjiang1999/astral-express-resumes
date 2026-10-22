@@ -86,7 +86,7 @@
  let header = [
   #grid(columns: (1fr, auto), align: horizon,
    text(size: 6.8pt, tracking: 0.9pt, fill: c.gold)[ASTRAL EXPRESS],
-   text(size: 7pt, weight: "bold", fill: c.gold)[同好扩列],
+   text(size: 7pt, weight: "bold", fill: c.gold)[开拓者扩列条],
   )
   #v(4mm)
   #grid(columns: (1fr, 24mm), column-gutter: 5mm, align: horizon,
