@@ -1,6 +1,7 @@
 import './style.css';
 import { PDFDocument } from 'pdf-lib';
 import { compileDocument } from './compiler.js';
+import { normalizeStripProfile, contactImageKey, stripImageKeys, migrateStripDraft } from './strip-profile.js';
 
 const $ = (selector) => document.querySelector(selector);
 const clone = (value) => structuredClone(value);
@@ -8,8 +9,9 @@ const base = new URL(import.meta.env.BASE_URL, location.href);
 const state = { kind: 'strip', theme: 'light', profiles: {}, images: { strip: {}, resume: {} }, revision: 0, result: null, busy: false, queued: false, timer: null, previewURL: null, uploads: { strip: {}, resume: {} } };
 const presets = {};
 const uploading = { strip: new Set(), resume: new Set() };
-const assetFields = ['portrait', 'qr_image'];
-const paragraphFields = new Set(['fandoms', 'favorites', 'interests', 'looking_for', 'cp', 'boundaries', 'preferences', 'event', 'message']);
+const maxContacts = 12;
+const maxImageBytes = 20 * 1024 * 1024;
+const imageKeys = (kind, profile = state.profiles[kind]) => kind === 'strip' ? stripImageKeys(profile) : ['portrait'];
 const repeatFields = {
   facts: [['title', '标题'], ['en', '英文副标题'], ['body', '内容']],
   paths: [['title', '名称'], ['body', '描述', true]],
@@ -46,16 +48,26 @@ function listFields(key, title) {
   const heading = key === 'facts' ? '' : field(`sections.${key}.title`, '栏目标题') + field(`sections.${key}.en`, '英文副标题', { optional: true });
   return section(key, title, heading + entries.map((item, index) => `<div class="repeat-item"><div class="repeat-heading"><span>${title} ${String(index + 1).padStart(2, '0')}</span><button type="button" class="text-button" data-remove="${key}" data-index="${index}" aria-label="删除${title}第${index + 1}项">删除</button></div>${repeatFields[key].map(([name, label, multiline]) => field(`${key}.${index}.${name}`, label, { multiline, optional: name === 'en' || name === 'subtitle', max: multiline ? 2000 : 120 })).join('')}</div>`).join('') + `<button type="button" class="add-item" data-add="${key}" ${entries.length >= (key === 'facts' ? 3 : 20) ? 'disabled' : ''}>＋ 添加一项</button>`);
 }
+function contactFields() {
+  const contacts = state.profiles.strip.contacts;
+  const items = contacts.map((contact, index) => {
+    const path = `contacts.${index}`;
+    return `<div class="repeat-item contact-item" data-contact-id="${contact.id}"><div class="repeat-heading"><span>联系方式 ${String(index + 1).padStart(2, '0')}</span><div class="contact-actions"><button type="button" class="text-button" data-contact-action="up" data-contact-id="${contact.id}" aria-label="上移联系方式第${index + 1}项" ${index === 0 ? 'disabled' : ''}>上移</button><button type="button" class="text-button" data-contact-action="down" data-contact-id="${contact.id}" aria-label="下移联系方式第${index + 1}项" ${index === contacts.length - 1 ? 'disabled' : ''}>下移</button><button type="button" class="text-button" data-contact-action="remove" data-contact-id="${contact.id}" aria-label="删除联系方式第${index + 1}项">删除</button></div></div>${field(`${path}.platform`, '平台', { optional: true, max: 80, placeholder: 'QQ / 微信 / 小红书 / B站 / 其他' })}${field(`${path}.account`, '账号 / ID', { optional: true, max: 200 })}${field(`${path}.note`, '备注', { multiline: true, optional: true, max: 500, placeholder: '例如：加好友请备注漫展名' })}<label class="check-field"><input type="checkbox" data-path="${path}.show_qr" ${contact.show_qr ? 'checked' : ''} />显示二维码区域</label>${upload(contactImageKey(contact.id), '上传这项的二维码')}</div>`;
+  }).join('');
+  const buttons = ['QQ', '微信', '小红书', 'B站', '自定义'].map((platform) => `<button type="button" class="secondary-button" data-add-contact="${platform}" ${contacts.length >= maxContacts ? 'disabled' : ''}>＋ ${platform}</button>`).join('');
+  return section('contact', '05 / 联系方式', '<p class="section-help">按需组合多个平台，每项可单独上传二维码，也可以只留账号。支持调整顺序，最多 12 项。</p>' + items + `<div class="contact-presets" role="group" aria-label="添加联系方式">${buttons}</div>`);
+}
 function renderForm(preserveOpen = false) {
   const expanded = new Set([...document.querySelectorAll('.form-section[open]')].map((node) => node.dataset.section));
   let html;
   if (state.kind === 'strip') {
-    html = section('about', '称呼与头像',
-      field('nickname', '昵称 / CN', { max: 24 }) + field('intro', '一句话介绍', { optional: true, max: 200 }) + field('location', '常驻城市', { optional: true, max: 100 }) + field('tagline', '页首短句', { optional: true, max: 100 }) + upload('portrait', '替换头像'), true)
-      + section('interests', '个人属性', '<p class="section-help">写喜欢的作品、人物和其他兴趣。支持多行文字，留空就不显示。</p>' + field('fandoms', '主坑', { multiline: true, optional: true }) + field('favorites', '我推', { multiline: true, optional: true }) + field('interests', '其他兴趣', { multiline: true, optional: true }), true)
-      + section('social', '相处与边界', field('looking_for', '想扩什么样的朋友', { multiline: true, optional: true }) + field('cp', 'CP 态度', { multiline: true, optional: true, placeholder: '例如：拒所有 CP / 杂食 / 填写偏好；也可以不写', hint: '留空时整行隐藏，不需要有喜欢的 CP。' }) + field('preferences', '日常与互动习惯', { multiline: true, optional: true }) + field('boundaries', 'NG / 希望避开的内容', { multiline: true, optional: true }))
-      + section('contact', '联系方式', field('contact_platform', '平台', { optional: true, max: 100 }) + field('contact', '账号', { optional: true, max: 200 }) + field('uid', '游戏 UID', { optional: true, max: 60 }) + field('contact_note', '加好友备注', { optional: true, max: 300 }) + `<label class="check-field"><input type="checkbox" data-path="show_qr" ${state.profiles.strip.show_qr ? 'checked' : ''} />显示二维码区域</label>` + upload('qr_image', '上传联系二维码'))
-      + section('extra', '更多留言', field('event', '漫展 / 出没', { multiline: true, optional: true }) + field('message', '留言', { multiline: true, optional: true }) + field('closing', '页尾短句', { optional: true, max: 200 }));
+    html = section('about', 'About me · 称呼与头像',
+      field('nickname', '昵称 / CN', { max: 24 }) + field('about_me', 'About me', { multiline: true, optional: true, placeholder: '年龄 / MBTI / 常驻城市\n性格、日常爱好，或一句自我介绍', hint: '显示在头像左侧，可分行填写；内容较多时自然向下展开。' }) + upload('portrait', '替换头像') + field('tagline', '页首短句', { optional: true, max: 100 }) + field('closing', '页尾短句', { optional: true, max: 200 }), true)
+      + section('fandoms', '01 / 坑', field('fandoms', '坑', { multiline: true, optional: true, placeholder: '喜欢的 IP、游戏、动画、作品或圈子\n也可以分组写常驻和近期兴趣' }), true)
+      + section('favorites', '02 / 我推', field('favorites', '我推', { multiline: true, optional: true, placeholder: '喜欢的角色，可按作品分组' }))
+      + section('boundaries', '03 / NG', field('boundaries', 'NG', { multiline: true, optional: true, placeholder: '希望避开的内容、互动边界等；没有可以留空' }))
+      + section('other', '04 / 其他', field('other', '其他', { multiline: true, optional: true, placeholder: '日常、互动习惯、漫展出没或其他想补充的话' }))
+      + contactFields();
   } else {
     html = section('about', '基本资料', '<p class="section-help">示例为开拓者同人简历。可改成自己的经历；篇幅需要控制在一张 A4 内。</p>' + field('name', '姓名 / 称呼', { max: 10 }) + field('uid', 'UID', { optional: true, max: 60 }) + field('identity', '身份 / 所属', { max: 100 }) + field('job_title', '求职意向', { max: 100 }) + field('job_note', '一句话优势', { optional: true, max: 100 }) + field('closing', '页尾短句', { optional: true, max: 100 }) + upload('portrait', '替换头像'), true)
       + listFields('facts', '简历摘要') + listFields('paths', '技术栈') + listFields('skills', '专业能力') + listFields('projects', '项目经历');
@@ -187,8 +199,22 @@ async function checkedImage(bytes, name = '已导入图片') {
   return { data: bytes, extension, name };
 }
 function resetUploads(kind) {
+  const keys = new Set([...uploading[kind], ...Object.keys(state.uploads[kind]), ...imageKeys(kind)]);
   uploading[kind].clear();
-  assetFields.forEach((key) => { state.uploads[kind][key] = (state.uploads[kind][key] || 0) + 1; });
+  keys.forEach((key) => { state.uploads[kind][key] = (state.uploads[kind][key] || 0) + 1; });
+}
+function clearImage(kind, key) {
+  state.uploads[kind][key] = (state.uploads[kind][key] || 0) + 1;
+  uploading[kind].delete(key);
+  delete state.images[kind][key];
+  if (key === 'portrait') state.profiles[kind].portrait = 'assets/stelle-id.png';
+  else if (kind === 'strip') {
+    const contact = state.profiles.strip.contacts.find((item) => contactImageKey(item.id) === key);
+    if (contact) contact.qr_image = null;
+  }
+}
+function checkImageBudget(images) {
+  if (Object.values(images).reduce((size, image) => size + image.data.length, 0) > maxImageBytes) throw new Error('当前模板的图片合计需小于 20 MB，请压缩图片后重试。');
 }
 function encodeBytes(bytes) {
   let binary = '';
@@ -197,17 +223,20 @@ function encodeBytes(bytes) {
 }
 function validateProfile(kind, source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) throw new Error('资料内容格式不正确。');
-  const model = clone(kind === 'strip' ? presets.default : presets.resume);
+  if (kind === 'strip') {
+    const profile = normalizeStripProfile(source);
+    profile.portrait = 'assets/stelle-id.png';
+    profile.contacts.forEach((contact) => { contact.qr_image = null; });
+    return profile;
+  }
+  const model = clone(presets.resume);
   for (const key of Object.keys(model)) {
-    if (assetFields.includes(key)) continue;
+    if (key === 'portrait') continue;
     if (source[key] === undefined) continue;
     const value = source[key];
-    if (typeof model[key] === 'string' || paragraphFields.has(key)) {
-      if (typeof value !== 'string' && !(kind === 'strip' && paragraphFields.has(key) && Array.isArray(value) && value.every((item) => typeof item === 'string'))) throw new Error(`资料字段 ${key} 必须是文字。`);
+    if (typeof model[key] === 'string') {
+      if (typeof value !== 'string') throw new Error(`资料字段 ${key} 必须是文字。`);
       if (textValue(value).length > 8000) throw new Error(`资料字段 ${key} 过长，请精简。`);
-      model[key] = value;
-    } else if (key === 'show_qr') {
-      if (typeof value !== 'boolean') throw new Error('二维码显示设置必须为 true 或 false。');
       model[key] = value;
     } else if (key === 'sections') {
       for (const sectionName of ['paths', 'skills', 'projects']) for (const prop of ['title', 'en']) {
@@ -223,9 +252,7 @@ function validateProfile(kind, source) {
     }
   }
   model.portrait = 'assets/stelle-id.png';
-  if (kind === 'strip') model.qr_image = null;
-  const name = kind === 'strip' ? model.nickname : model.name;
-  if (!name.trim() || [...name].length > (kind === 'strip' ? 24 : 10)) throw new Error(kind === 'strip' ? '昵称请填写 1–24 个字符。' : '姓名请填写 1–10 个字符。');
+  if (!model.name.trim() || [...model.name].length > 10) throw new Error('姓名请填写 1–10 个字符。');
   return model;
 }
 
@@ -245,11 +272,17 @@ $('#editor-form').addEventListener('change', async (event) => {
   state.uploads[kind][key] = token;
   event.target.value = '';
   uploading[kind].add(key);
+  if (kind === 'strip' && key !== 'portrait') {
+    const contact = state.profiles.strip.contacts.find((item) => contactImageKey(item.id) === key);
+    contact.show_qr = true;
+    event.target.closest('.contact-item').querySelector('input[type="checkbox"]').checked = true;
+  }
   invalidate('正在读取图片，请稍等…');
   try {
     if (file.size > 5 * 1024 * 1024) throw new Error('图片需小于 5 MB。');
     const image = await checkedImage(new Uint8Array(await file.arrayBuffer()), file.name);
-    if (state.uploads[kind][key] !== token) return;
+    if (state.uploads[kind][key] !== token || !imageKeys(kind).includes(key)) return;
+    checkImageBudget({ ...state.images[kind], [key]: image });
     state.images[kind][key] = image;
     uploading[kind].delete(key);
     if (kind === state.kind) { renderForm(true); invalidate('图片已更新，正在准备预览…'); }
@@ -263,11 +296,27 @@ $('#editor-form').addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
   if (button.dataset.clearImage) {
-    const key = button.dataset.clearImage;
-    state.uploads[state.kind][key] = (state.uploads[state.kind][key] || 0) + 1;
-    uploading[state.kind].delete(key);
-    delete state.images[state.kind][key];
-    state.profiles[state.kind][key] = key === 'portrait' ? 'assets/stelle-id.png' : null;
+    clearImage(state.kind, button.dataset.clearImage);
+  } else if (button.dataset.addContact) {
+    const contacts = state.profiles.strip.contacts;
+    if (contacts.length >= maxContacts) return;
+    const platform = button.dataset.addContact === '自定义' ? '' : button.dataset.addContact;
+    contacts.push({ id: crypto.randomUUID(), platform, account: '', note: '', show_qr: true, qr_image: null });
+    renderForm(true); invalidate();
+    document.querySelector(`[data-path="contacts.${contacts.length - 1}.${platform ? 'account' : 'platform'}"]`).focus();
+    return;
+  } else if (button.dataset.contactAction) {
+    const contacts = state.profiles.strip.contacts;
+    const index = contacts.findIndex((contact) => contact.id === button.dataset.contactId);
+    if (index < 0) return;
+    if (button.dataset.contactAction === 'remove') {
+      clearImage('strip', contactImageKey(contacts[index].id));
+      contacts.splice(index, 1);
+    } else {
+      const next = index + (button.dataset.contactAction === 'up' ? -1 : 1);
+      if (next < 0 || next >= contacts.length) return;
+      [contacts[index], contacts[next]] = [contacts[next], contacts[index]];
+    }
   } else if (button.dataset.add) {
     const key = button.dataset.add;
     if (state.profiles.resume[key].length >= (key === 'facts' ? 3 : 20)) return;
@@ -302,8 +351,9 @@ $('#download-pdf').addEventListener('click', () => {
 $('#download-png').addEventListener('click', downloadPNG);
 $('#save-draft').addEventListener('click', () => {
   if (uploading[state.kind].size) { setStatus('图片尚未读取完成，请稍后再保存资料。'); return; }
-  const images = Object.fromEntries(Object.entries(state.images[state.kind]).map(([key, value]) => [key, { name: value.name, base64: encodeBytes(value.data) }]));
-  const draft = { version: 1, kind: state.kind, theme: state.theme, profile: state.profiles[state.kind], images };
+  const keys = imageKeys(state.kind);
+  const images = Object.fromEntries(Object.entries(state.images[state.kind]).filter(([key]) => keys.includes(key)).map(([key, value]) => [key, { name: value.name, base64: encodeBytes(value.data) }]));
+  const draft = { version: 2, kind: state.kind, theme: state.theme, profile: state.profiles[state.kind], images };
   download(new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' }), `trailblazer-${state.kind}-draft.json`);
 });
 $('#load-draft').addEventListener('click', () => $('#draft-file').click());
@@ -312,17 +362,19 @@ $('#draft-file').addEventListener('change', async (event) => {
   if (!file) return;
   const revision = state.revision;
   try {
-    if (file.size > 15 * 1024 * 1024) throw new Error('资料文件需小于 15 MB。');
+    if (file.size > 30 * 1024 * 1024) throw new Error('资料文件需小于 30 MB。');
     const data = JSON.parse(await file.text());
-    if (data.version !== 1 || !['strip', 'resume'].includes(data.kind) || !['light', 'dark'].includes(data.theme)) throw new Error('请选择通过本编辑器「保存资料」生成的 JSON 文件。');
-    const profile = validateProfile(data.kind, data.profile);
+    if (![1, 2].includes(data.version) || !['strip', 'resume'].includes(data.kind) || !['light', 'dark'].includes(data.theme)) throw new Error('请选择通过本编辑器「保存资料」生成的 JSON 文件。');
+    const migrated = data.kind === 'strip' ? migrateStripDraft(data.profile, data.images) : data;
+    const profile = validateProfile(data.kind, migrated.profile);
     const images = {};
-    for (const key of assetFields) {
-      const entry = data.images?.[key];
-      if (!entry || (data.kind === 'resume' && key === 'qr_image')) continue;
+    for (const key of imageKeys(data.kind, profile)) {
+      const entry = migrated.images?.[key];
+      if (!entry) continue;
       if (typeof entry.base64 !== 'string' || entry.base64.length > 7_000_000) throw new Error('资料中的图片格式不正确。');
       images[key] = await checkedImage(Uint8Array.from(atob(entry.base64), (c) => c.charCodeAt(0)), typeof entry.name === 'string' ? entry.name : '已导入图片');
     }
+    checkImageBudget(images);
     if (state.revision !== revision) throw new Error('导入期间内容发生变化，请重新选择资料文件。');
     if (!confirm('导入资料会替换该模板当前的内容，是否继续？')) return;
     resetUploads(data.kind); state.kind = data.kind; state.theme = data.theme; state.profiles[data.kind] = profile; state.images[data.kind] = images;
@@ -336,10 +388,8 @@ async function start() {
       readJSON('templates/strip/config/profile.json'), readJSON('templates/strip/config/examples/short.json'),
       readJSON('templates/strip/config/examples/long.json'), readJSON('templates/resume-dark/config/profile.json'),
     ]);
-    presets.default = standard; presets.short = { ...standard, ...short }; presets.long = { ...standard, ...long }; presets.resume = resume;
-    // Omitted optional fields in a short preset stay empty instead of inheriting the standard sample.
-    for (const key of Object.keys(standard)) if (!(key in short) && !assetFields.includes(key) && key !== 'show_qr') presets.short[key] = '';
-    state.profiles.strip = clone(standard); state.profiles.resume = clone(resume);
+    presets.default = normalizeStripProfile(standard); presets.short = normalizeStripProfile(short); presets.long = normalizeStripProfile(long); presets.resume = resume;
+    state.profiles.strip = clone(presets.default); state.profiles.resume = clone(resume);
     renderForm(); await renderPreview();
   } catch (error) { setStatus(error.message, 'error'); $('#preview-stage').setAttribute('aria-busy', 'false'); }
 }

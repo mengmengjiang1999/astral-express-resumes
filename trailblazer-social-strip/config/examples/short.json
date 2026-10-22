@@ -1,12 +1,21 @@
 {
   "nickname": "短版示例",
-  "location": "填写城市",
+  "about_me": "填写 CN / 城市，留一句简短介绍。",
   "tagline": "愿此行，终抵群星",
   "fandoms": "例：星穹铁道 / 喜欢的动漫",
   "favorites": "填写喜欢的角色",
-  "interests": "例：听歌 / 阅读",
-  "contact_platform": "QQ / 微信",
-  "contact": "填写账号",
-  "show_qr": false,
-  "closing": "愿此行，终抵群星！"
+  "boundaries": "",
+  "other": "",
+  "contacts": [
+    {
+      "id": "qq",
+      "platform": "QQ",
+      "account": "填写账号",
+      "note": "欢迎来聊共同的作品",
+      "show_qr": false,
+      "qr_image": null
+    }
+  ],
+  "closing": "愿此行，终抵群星！",
+  "portrait": "assets/stelle-id.png"
 }

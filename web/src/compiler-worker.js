@@ -3,6 +3,7 @@ import { createTypstRenderer } from '@myriaddreamin/typst.ts/renderer';
 import { loadFonts } from '@myriaddreamin/typst.ts/options.init';
 import compilerWasmURL from '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url';
 import rendererWasmURL from '@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url';
+import { contactImageKey, normalizeStripProfile, stripImageKeys } from './strip-profile.js';
 
 // JS wrappers and both WASM packages are pinned together in package-lock.json.
 const VERSION = '0.8.0-rc3';
@@ -108,9 +109,22 @@ function validateRequest(payload) {
   }
 }
 
-function mapUserImages(profile, images = {}) {
-  for (const field of ['portrait', 'qr_image']) {
-    const image = images[field];
+function mapUserImages(kind, profile, images = {}) {
+  if (!images || typeof images !== 'object' || Array.isArray(images)) {
+    throw new Error('上传图片格式不正确。');
+  }
+  const allowed = new Set(kind === 'strip' ? stripImageKeys(profile) : ['portrait']);
+  if (Object.keys(images).some((key) => !allowed.has(key))) {
+    throw new Error('上传图片对应的联系方式已移除或无效，请重新选择图片。');
+  }
+  // Browser requests never load caller-supplied paths. Only bundled/uploaded bytes
+  // are mapped into this fresh virtual root; native JSON paths remain supported elsewhere.
+  profile.portrait = 'assets/stelle-id.png';
+  if (kind === 'strip') {
+    for (const entry of profile.contacts) entry.qr_image = null;
+  }
+  for (const field of allowed) {
+    const image = Object.prototype.hasOwnProperty.call(images, field) ? images[field] : undefined;
     if (!image) continue;
     if (!(image.data instanceof Uint8Array) || image.data.byteLength === 0) {
       throw new Error(`${field === 'portrait' ? '头像' : '二维码'}文件内容为空。`);
@@ -120,7 +134,11 @@ function mapUserImages(profile, images = {}) {
     }
     const path = `assets/upload-${field}.${image.extension}`;
     compiler.mapShadow(`/${path}`, image.data);
-    profile[field] = path;
+    if (field === 'portrait') profile.portrait = path;
+    else {
+      const entry = profile.contacts.find((item) => contactImageKey(item.id) === field);
+      entry.qr_image = path;
+    }
   }
 }
 
@@ -142,8 +160,9 @@ async function compile(message) {
     if (path.endsWith('.typ')) compiler.addSource(`/${path}`, decoder.decode(contents));
     else compiler.mapShadow(`/${path}`, contents);
   }
-  const profile = { ...payload.profile };
-  mapUserImages(profile, payload.images);
+  const profile = kind === 'strip' ? normalizeStripProfile(payload.profile)
+    : structuredClone(payload.profile);
+  mapUserImages(kind, profile, payload.images);
   compiler.mapShadow('/config/profile.json', encoder.encode(JSON.stringify(profile)));
 
   progress(id, '正在排版并生成 PDF…');

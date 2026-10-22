@@ -26,10 +26,23 @@ from reportlab.pdfgen import canvas
 ROOT = Path(__file__).resolve().parents[1]
 THEMES = ("dark", "light")
 PARAGRAPH_FIELDS = frozenset((
-    "fandoms", "favorites", "interests", "cp", "looking_for", "boundaries",
-    "preferences", "event", "message",
+    "about_me", "fandoms", "favorites", "boundaries", "other",
+    # strip.typ migrates these only when their replacement field is absent.
+    "interests", "cp", "looking_for", "preferences", "event", "message", "same_fans",
+))
+STRING_FIELDS = frozenset((
+    "nickname", "tagline", "closing", "intro", "location", "call_me",
+    "contact_platform", "contact", "contact_note", "uid",
 ))
 ASSET_FIELDS = frozenset(("portrait", "qr_image"))
+PROFILE_FIELDS = PARAGRAPH_FIELDS | STRING_FIELDS | ASSET_FIELDS | {"show_qr", "contacts"}
+CONTACT_FIELDS = frozenset(("id", "platform", "account", "note", "show_qr", "qr_image"))
+HIDDEN_FIELDS = ASSET_FIELDS | {"id", "show_qr"}
+LEGACY_FALLBACK_FIELDS = {
+    "about_me": frozenset(("intro", "location", "call_me")),
+    "other": frozenset(("interests", "cp", "looking_for", "preferences", "event", "message", "same_fans")),
+    "contacts": frozenset(("contact_platform", "contact", "contact_note", "uid")),
+}
 STRIP_WIDTH = 80 * mm
 A4_MAX_HEIGHT = 267 * mm
 PRINT_SHEET_NAME = "trailblazer-strip-a4-print.pdf"
@@ -81,11 +94,10 @@ def load_profile(relative):
         raise ValueError(f"资料配置必须是有效的 UTF-8 JSON：{error}") from error
     if not isinstance(profile, dict):
         raise ValueError("资料配置必须是 JSON 对象")
-    for obsolete in ("about_me", "same_fans"):
-        if obsolete in profile:
-            raise ValueError(f"资料字段 {obsolete} 已移除，请将内容移到 intro、interests 或 preferences")
     for field, value in profile.items():
-        if field in ASSET_FIELDS or field == "show_qr":
+        if field not in PROFILE_FIELDS:
+            raise ValueError(f"未知资料字段 {field}，请检查拼写或将补充内容移到 other")
+        if field in ASSET_FIELDS or field in ("show_qr", "contacts"):
             continue
         if field in PARAGRAPH_FIELDS and isinstance(value, list):
             if not all(isinstance(item, str) for item in value):
@@ -103,19 +115,56 @@ def load_profile(relative):
     project_file(profile.get("portrait", "assets/stelle-id.png"), "portrait")
     if profile.get("qr_image") is not None:
         project_file(profile["qr_image"], "qr_image")
+    contacts = profile.get("contacts", [])
+    if not isinstance(contacts, list):
+        raise ValueError("contacts 必须为数组；不填写联系方式时省略或使用 []")
+    if len(contacts) > 12:
+        raise ValueError("contacts 最多填写 12 个联系方式")
+    seen_ids = set()
+    for index, contact in enumerate(contacts):
+        label = f"contacts[{index}]"
+        if not isinstance(contact, dict):
+            raise ValueError(f"{label} 必须为联系方式对象")
+        unknown = sorted(set(contact) - CONTACT_FIELDS)
+        if unknown:
+            raise ValueError(f"{label} 包含未知字段：{', '.join(unknown)}")
+        contact_id = contact.get("id")
+        if not isinstance(contact_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", contact_id):
+            raise ValueError(f"{label}.id 必须是 1 至 64 字符且仅含 ASCII 字母、数字、下划线或连字符的字符串")
+        if contact_id in seen_ids:
+            raise ValueError(f"{label}.id 重复：{contact_id}；每个联系方式必须使用唯一 id")
+        seen_ids.add(contact_id)
+        for field in ("platform", "account", "note"):
+            if not isinstance(contact.get(field, ""), str):
+                raise ValueError(f"{label}.{field} 必须为字符串；不填时省略或使用空字符串")
+        # Omitted show_qr follows qr_image in Typst; validate explicit overrides only.
+        if "show_qr" in contact and not isinstance(contact["show_qr"], bool):
+            raise ValueError(f"{label}.show_qr 必须为 true 或 false")
+        if contact.get("qr_image") is not None:
+            project_file(contact["qr_image"], f"{label}.qr_image")
     return source, profile
 
 
 def actual_text(profile):
-    """Yield each supplied paragraph separately, skipping hidden structural values."""
+    """Check visible text, matching Typst's new-field-first legacy normalization."""
+    def walk(value, label):
+        if isinstance(value, dict):
+            for field, child in value.items():
+                if field not in HIDDEN_FIELDS:
+                    yield from walk(child, f"{label}.{field}" if label else field)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                yield from walk(child, f"{label}[{index}]")
+        elif isinstance(value, str) and normalized(value):
+            yield label, normalized(value)
+
+    ignored_legacy = set()
+    for replacement, legacy_fields in LEGACY_FALLBACK_FIELDS.items():
+        if replacement in profile:
+            ignored_legacy.update(legacy_fields)
     for field, value in profile.items():
-        if field in ASSET_FIELDS or field == "show_qr":
-            continue
-        values = value if isinstance(value, list) else [value]
-        for index, paragraph in enumerate(values):
-            if isinstance(paragraph, str) and normalized(paragraph):
-                label = f"{field}[{index}]" if isinstance(value, list) else field
-                yield label, normalized(paragraph)
+        if field not in HIDDEN_FIELDS and field not in ignored_legacy:
+            yield from walk(value, field)
 
 
 def validate_strip(data, profile, theme):

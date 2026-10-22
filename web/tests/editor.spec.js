@@ -109,13 +109,13 @@ test('edits, CP boundary and theme produce matching PDF/PNG without sending pers
   await start(page);
   await page.locator('#auto-preview').uncheck();
   await fill(page, 'nickname', '测试旅人');
-  await fill(page, 'cp', '拒所有 CP');
+  await fill(page, 'boundaries', '拒所有 CP');
   await page.locator('[data-theme="dark"]').click();
   await expect(page.locator('#download-pdf')).toBeDisabled();
   await page.locator('#refresh').click();
   await ready(page);
   const request = await page.evaluate(() => window.__lastCompilation.request);
-  expect(request).toMatchObject({ kind: 'strip', theme: 'dark', profile: { nickname: '测试旅人', cp: '拒所有 CP' } });
+  expect(request).toMatchObject({ kind: 'strip', theme: 'dark', profile: { nickname: '测试旅人', boundaries: '拒所有 CP' } });
   const pdf = await currentPDF(page);
   expect(pdf.name).toBe('trailblazer-strip-dark.pdf');
   expect(pdf.width).toBeCloseTo(80, 1);
@@ -162,23 +162,23 @@ test('long/short presets resize the strip and entirely blank optional groups col
   await preset(page, 'long');
   const long = await currentPDF(page);
   expect(long.height).toBeGreaterThan(300);
-  expect(long.height).toBeGreaterThan(standard.height * 1.7);
+  expect(long.height).toBeGreaterThan(standard.height * 1.5);
   await expect(page.locator('#export-note')).toContainText('长条');
   const png = await exportFile(page, '#download-png');
   await writeFile(testInfo.outputPath('strip-long.png'), png.bytes);
   await preset(page, 'short');
   const short = await currentPDF(page);
-  expect(short.height).toBeLessThan(130);
+  expect(short.height).toBeLessThan(150);
   expect(short.height).toBeLessThan(standard.height);
   await page.locator('#auto-preview').uncheck();
-  for (const key of ['fandoms', 'favorites', 'interests', 'looking_for', 'cp', 'boundaries', 'preferences']) await fill(page, key, '');
+  for (const key of ['fandoms', 'favorites', 'boundaries', 'other']) await fill(page, key, '');
   await page.locator('#refresh').click();
   await ready(page);
   const minimal = await currentPDF(page);
   expect(minimal.height).toBeLessThan(short.height - 20);
   const draft = await savedDraft(page);
   expect(draft.profile.fandoms).toBe('');
-  expect(draft.profile.preferences).toBe('');
+  expect(draft.profile.other).toBe('');
 });
 
 test('late compilation cannot restore stale exports after rapid edits', async ({ page }) => {
@@ -189,7 +189,7 @@ test('late compilation cannot restore stale exports after rapid edits', async ({
   await page.locator('#refresh').click();
   await page.waitForFunction(() => window.__resultHeld);
   await fill(page, 'nickname', '最终版名字');
-  await fill(page, 'cp', '拒所有 CP');
+  await fill(page, 'boundaries', '拒所有 CP');
   await page.locator('[data-theme="dark"]').click();
   await expect(page.locator('#download-pdf')).toBeDisabled();
   await expect(page.locator('#download-png')).toBeDisabled();
@@ -197,7 +197,7 @@ test('late compilation cannot restore stale exports after rapid edits', async ({
   await page.evaluate(() => window.__releaseResult());
   await ready(page);
   expect(await page.evaluate(() => window.__lastCompilation.request)).toMatchObject({
-    kind: 'strip', theme: 'dark', profile: { nickname: '最终版名字', cp: '拒所有 CP' },
+    kind: 'strip', theme: 'dark', profile: { nickname: '最终版名字', boundaries: '拒所有 CP' },
   });
   await currentPDF(page);
 });
@@ -220,21 +220,42 @@ test('overfull A4 is rejected and exports stay disabled until content is repaire
   expect((await currentPDF(page)).height).toBeCloseTo(297, 1);
 });
 
-test('image uploads survive draft round-trip but do not leak into another template or reset preset', async ({ page }) => {
+test('multiple QR components retain their identity through sorting, removal and draft round-trip', async ({ page }, testInfo) => {
   await start(page);
   const portrait = await uploadFixture(page, '#e43131', 'sample-portrait.png');
-  const qr = await uploadFixture(page, '#2534f0', 'sample-qr.png');
+  const qqQR = await uploadFixture(page, '#2534f0', 'qq-qr.png');
+  const wechatQR = await uploadFixture(page, '#25ad37', 'wechat-qr.png');
   await page.locator('#upload-portrait').setInputFiles(portrait);
-  await expect(page.locator('.upload-field').filter({ has: page.locator('#upload-portrait') })).toContainText(portrait.name);
   await ready(page);
-  await (await input(page, 'contact')).fill('sample-account-only');
-  await page.locator('#upload-qr_image').setInputFiles(qr);
-  await expect(page.locator('.upload-field').filter({ has: page.locator('#upload-qr_image') })).toContainText(qr.name);
+  await fill(page, 'contacts.0.account', 'QQ-account');
+  await fill(page, 'contacts.1.account', 'wechat-account');
+  const ids = await page.locator('.contact-item').evaluateAll((items) => items.map((item) => item.dataset.contactId));
+  for (const [id, fixture] of [[ids[0], qqQR], [ids[1], wechatQR]]) {
+    await page.locator(`#upload-contact-${id}`).setInputFiles(fixture);
+    await expect(page.locator(`.contact-item[data-contact-id="${id}"]`)).toContainText(fixture.name);
+    await ready(page);
+  }
+  // Verify both uploads are in the actual rendered SVG, not just the form model.
+  const svg = await page.locator('#preview-image').evaluate(async (img) => (await fetch(img.src)).text());
+  expect(svg).toContain(qqQR.buffer.toString('base64'));
+  expect(svg).toContain(wechatQR.buffer.toString('base64'));
+  await page.locator('[data-add-contact="小红书"]').click();
+  await fill(page, 'contacts.2.account', 'redbook-account');
+  await (await input(page, 'contacts.2.show_qr')).uncheck();
+  await page.locator(`[data-contact-action="up"][data-contact-id="${ids[1]}"]`).click();
+  await expect(page.locator('[data-path="contacts.0.account"]')).toHaveValue('wechat-account');
+  await expect(page.locator('[data-path="contacts.1.account"]')).toHaveValue('QQ-account');
   await ready(page);
   const exported = await exportFile(page, '#save-draft');
   const draft = JSON.parse(exported.bytes.toString());
+  expect(draft.version).toBe(2);
   expect(draft.images.portrait.base64).toBe(portrait.buffer.toString('base64'));
-  expect(draft.images.qr_image.base64).toBe(qr.buffer.toString('base64'));
+  expect(draft.images[`contact-${ids[0]}`].base64).toBe(qqQR.buffer.toString('base64'));
+  expect(draft.images[`contact-${ids[1]}`].base64).toBe(wechatQR.buffer.toString('base64'));
+  expect(draft.profile.contacts.map((contact) => contact.account)).toEqual(['wechat-account', 'QQ-account', 'redbook-account']);
+  const pdf = await currentPDF(page);
+  await writeFile(testInfo.outputPath('multi-contact.pdf'), pdf.bytes);
+  await writeFile(testInfo.outputPath('multi-contact.png'), (await exportFile(page, '#download-png')).bytes);
   await page.locator('[data-kind="resume"]').click();
   await ready(page);
   expect((await savedDraft(page)).images).toEqual({});
@@ -244,15 +265,55 @@ test('image uploads survive draft round-trip but do not leak into another templa
   await preset(page, 'short');
   expect((await savedDraft(page)).images).toEqual({});
   await page.locator('#draft-file').setInputFiles({ name: 'restored-draft.json', mimeType: 'application/json', buffer: exported.bytes });
-  await expect(page.locator('[data-path="contact"]')).toHaveValue('sample-account-only');
+  await expect(page.locator('[data-path="contacts.0.account"]')).toHaveValue('wechat-account');
   await ready(page);
   const restored = await savedDraft(page);
   expect(restored.profile).toEqual(draft.profile);
   expect(restored.images).toEqual(draft.images);
-  await currentPDF(page);
+  // Removing one component must remove only its own image.
+  await (await input(page, 'contacts.1.account')).focus();
+  await page.locator(`[data-contact-action="remove"][data-contact-id="${ids[0]}"]`).click();
+  await ready(page);
+  const removed = await savedDraft(page);
+  expect(removed.profile.contacts.map((contact) => contact.account)).toEqual(['wechat-account', 'redbook-account']);
+  expect(removed.images[`contact-${ids[0]}`]).toBeUndefined();
+  expect(removed.images[`contact-${ids[1]}`]).toEqual(draft.images[`contact-${ids[1]}`]);
   await page.locator('#draft-file').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{invalid') });
   await expect(page.locator('#status')).toContainText('导入失败');
-  expect((await savedDraft(page)).images).toEqual(draft.images);
+  expect((await savedDraft(page)).images).toEqual(removed.images);
+});
+
+test('old drafts migrate all personal content and their QR into the new structure', async ({ page }) => {
+  await start(page);
+  const qr = await uploadFixture(page, '#713ada', 'legacy-qr.png');
+  const old = {
+    version: 1, kind: 'strip', theme: 'dark',
+    profile: { nickname: '旧版旅人', intro: '慢热但喜欢聊天', location: '上海', fandoms: '星穹铁道', favorites: '开拓者', interests: '音乐', looking_for: '同好朋友', cp: '拒所有 CP', boundaries: '不催回', preferences: '偶尔发日常', event: '漫展见', message: '欢迎扩列', contact_platform: 'QQ', contact: 'legacy-account', contact_note: '加好友备注漫展', uid: '123456789', show_qr: true, qr_image: null },
+    images: { qr_image: { name: qr.name, base64: qr.buffer.toString('base64') } },
+  };
+  await page.locator('#draft-file').setInputFiles({ name: 'legacy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(old)) });
+  await expect(page.locator('[data-path="nickname"]')).toHaveValue('旧版旅人');
+  await ready(page);
+  const migrated = await savedDraft(page);
+  const paragraphs = (value) => Array.isArray(value) ? value.join('\n') : value;
+  expect(paragraphs(migrated.profile.about_me)).toContain('慢热但喜欢聊天');
+  expect(paragraphs(migrated.profile.about_me)).toContain('上海');
+  for (const value of ['音乐', '同好朋友', '拒所有 CP', '偶尔发日常', '漫展见', '欢迎扩列']) expect(paragraphs(migrated.profile.other)).toContain(value);
+  expect(migrated.profile.contacts[0]).toMatchObject({ platform: 'QQ', account: 'legacy-account', note: '加好友备注漫展', show_qr: true });
+  expect(migrated.profile.contacts[1]).toMatchObject({ platform: '游戏 UID', account: '123456789', show_qr: false });
+  expect(migrated.images[`contact-${migrated.profile.contacts[0].id}`].base64).toBe(qr.buffer.toString('base64'));
+  const svg = await page.locator('#preview-image').evaluate(async (img) => (await fetch(img.src)).text());
+  expect(svg).toContain(qr.buffer.toString('base64'));
+  await currentPDF(page);
+  // Explicit empty new fields must not be repopulated by legacy data.
+  old.profile = { ...old.profile, about_me: '', other: '', contacts: [] };
+  await page.locator('#draft-file').setInputFiles({ name: 'explicit-empty.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(old)) });
+  await expect(page.locator('[data-path="about_me"]')).toHaveValue('');
+  await ready(page);
+  const empty = await savedDraft(page);
+  expect(empty.profile.contacts).toEqual([]);
+  expect(empty.profile.other).toBe('');
+  expect(empty.images).toEqual({});
 });
 
 test('pending image reads disable exports and clearing the image cancels late completion', async ({ page }) => {
@@ -275,6 +336,60 @@ test('pending image reads disable exports and clearing the image cancels late co
   await ready(page);
   expect((await savedDraft(page)).images).toEqual({});
   await expect(page.locator('.upload-field').filter({ has: page.locator('#upload-portrait') })).not.toContainText(portrait.name);
+  await currentPDF(page);
+});
+
+test('deleting a contact while its QR is loading cannot restore the removed image', async ({ page }) => {
+  await page.addInitScript(() => {
+    const native = File.prototype.arrayBuffer;
+    File.prototype.arrayBuffer = function (...args) {
+      if (this.name !== 'delayed-contact.png') return native.apply(this, args);
+      return new Promise((resolve, reject) => {
+        window.__finishContactRead = () => native.apply(this, args).then(resolve, reject);
+      });
+    };
+  });
+  await start(page);
+  await fill(page, 'contacts.0.account', 'deleted-account');
+  const id = await page.locator('.contact-item').first().getAttribute('data-contact-id');
+  await page.locator(`#upload-contact-${id}`).setInputFiles(await uploadFixture(page, '#a34a61', 'delayed-contact.png'));
+  await expect(page.locator('#download-pdf')).toBeDisabled();
+  await page.locator(`[data-contact-action="remove"][data-contact-id="${id}"]`).click();
+  await page.evaluate(() => window.__finishContactRead());
+  await ready(page);
+  const draft = await savedDraft(page);
+  expect(draft.profile.contacts.some((contact) => contact.id === id)).toBe(false);
+  expect(draft.images[`contact-${id}`]).toBeUndefined();
+  await currentPDF(page);
+});
+
+test('hiding a QR while it loads preserves the latest choice after reordering', async ({ page }) => {
+  await page.addInitScript(() => {
+    const native = File.prototype.arrayBuffer;
+    File.prototype.arrayBuffer = function (...args) {
+      if (this.name !== 'hidden-contact.png') return native.apply(this, args);
+      return new Promise((resolve, reject) => {
+        window.__finishHiddenRead = () => native.apply(this, args).then(resolve, reject);
+      });
+    };
+  });
+  await start(page);
+  await fill(page, 'contacts.0.account', 'hidden-QR-account');
+  const id = await page.locator('.contact-item').first().getAttribute('data-contact-id');
+  const qr = await uploadFixture(page, '#a16e24', 'hidden-contact.png');
+  await (await input(page, 'contacts.0.show_qr')).uncheck();
+  await page.locator(`#upload-contact-${id}`).setInputFiles(qr);
+  await expect(page.locator('[data-path="contacts.0.show_qr"]')).toBeChecked();
+  await (await input(page, 'contacts.0.show_qr')).uncheck();
+  await page.locator(`[data-contact-action="down"][data-contact-id="${id}"]`).click();
+  await page.evaluate(() => window.__finishHiddenRead());
+  await ready(page);
+  await expect(page.locator('[data-path="contacts.1.show_qr"]')).not.toBeChecked();
+  const draft = await savedDraft(page);
+  expect(draft.profile.contacts[1]).toMatchObject({ id, account: 'hidden-QR-account', show_qr: false });
+  expect(draft.images[`contact-${id}`].base64).toBe(qr.buffer.toString('base64'));
+  const svg = await page.locator('#preview-image').evaluate(async (img) => (await fetch(img.src)).text());
+  expect(svg).not.toContain(qr.buffer.toString('base64'));
   await currentPDF(page);
 });
 

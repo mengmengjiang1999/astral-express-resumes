@@ -472,6 +472,31 @@ h1 {
   min-height:66px
 }
 
+.contact-actions {
+  display:flex;
+  gap:8px;
+  flex-shrink:0
+}
+
+.contact-actions button {
+  font-size:11px;
+  padding:3px 0
+}
+
+.contact-presets {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px
+}
+
+.contact-presets .secondary-button {
+  padding:7px 10px
+}
+
+.contact-item .upload-field {
+  margin-bottom:0
+}
+
 .add-item {
   width:100%;
   padding:8px;

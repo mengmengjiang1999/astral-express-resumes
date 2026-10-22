@@ -1,26 +1,38 @@
 {
   "nickname": "你的昵称",
-  "intro": "填写一句自我介绍",
-  "location": "填写常驻城市",
+  "about_me": [
+    "填写 CN / 常驻城市",
+    "用两三句介绍自己，也可以写日常习惯。"
+  ],
   "tagline": "愿此行，终抵群星",
   "fandoms": [
     "游戏：填写常玩的游戏",
     "动漫 / 小说：填写喜欢的作品"
   ],
   "favorites": "填写喜欢的角色 / 组合 / 人物",
-  "interests": "例：音乐 / 摄影 / 阅读 / 娃娃",
-  "looking_for": "例：聊同坑作品 / 约展 / 日常交流",
-  "cp": "",
   "boundaries": "填写希望避开的话题或行为",
-  "preferences": "填写日常分享内容与互动习惯",
-  "contact_platform": "QQ / 微信",
-  "contact": "填写账号",
-  "uid": "",
-  "contact_note": "加好友请备注：漫展 + CN",
+  "other": [
+    "例：听歌 / 摄影 / 阅读 / 手作",
+    "填写想聊的话题与互动习惯"
+  ],
+  "contacts": [
+    {
+      "id": "qq",
+      "platform": "QQ",
+      "account": "填写 QQ 账号",
+      "note": "加好友请备注 CN",
+      "show_qr": true,
+      "qr_image": null
+    },
+    {
+      "id": "wechat",
+      "platform": "微信",
+      "account": "填写微信号",
+      "note": "加好友请备注漫展",
+      "show_qr": true,
+      "qr_image": null
+    }
+  ],
   "closing": "愿此行，终抵群星！",
-  "portrait": "assets/stelle-id.png",
-  "show_qr": true,
-  "qr_image": null,
-  "event": "",
-  "message": ""
+  "portrait": "assets/stelle-id.png"
 }

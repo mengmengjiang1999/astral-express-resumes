@@ -13,10 +13,57 @@
 }
 
 #let paragraphs(value) = {
+ if value == none { return () }
  let values = if type(value) == array { value } else { (value,) }
  values.filter(item => item.trim() != "")
 }
 #let present(value) = paragraphs(value).len() > 0
+
+// New fields take precedence, including explicit empty values. Legacy values are
+// migrated only when the corresponding new field is absent.
+#let legacy-paragraphs(profile, fields) = {
+ let result = ()
+ for (label, key) in fields {
+  for item in paragraphs(profile.at(key, default: "")) {
+   result.push(if label == "" { item } else { label + "：" + item })
+  }
+ }
+ result
+}
+#let normalize-profile(input) = {
+ let about = if "about_me" in input { paragraphs(input.about_me) } else {
+  legacy-paragraphs(input, (("", "intro"), ("坐标", "location"), ("称呼", "call_me")))
+ }
+ let other = if "other" in input { paragraphs(input.other) } else {
+  legacy-paragraphs(input, (
+   ("兴趣", "interests"), ("CP 态度", "cp"), ("想扩", "looking_for"),
+   ("日常", "preferences"), ("出没", "event"), ("留言", "message"), ("同担", "same_fans"),
+  ))
+ }
+ let contacts = if "contacts" in input { input.contacts } else { () }
+ if not ("contacts" in input) {
+  if ("contact_platform", "contact", "contact_note", "show_qr", "qr_image").any(key => key in input) {
+   contacts.push((
+    id: "legacy-contact", platform: input.at("contact_platform", default: ""),
+    account: input.at("contact", default: ""), note: input.at("contact_note", default: ""),
+    show_qr: input.at("show_qr", default: input.at("qr_image", default: none) != none),
+    qr_image: input.at("qr_image", default: none),
+   ))
+  }
+  if present(input.at("uid", default: "")) {
+   contacts.push((id: "legacy-uid", platform: "游戏 UID", account: input.uid,
+    note: "", show_qr: false, qr_image: none))
+  }
+ }
+ (
+  nickname: input.nickname, about_me: about, other: other, contacts: contacts,
+  tagline: input.at("tagline", default: ""), closing: input.at("closing", default: ""),
+  fandoms: input.at("fandoms", default: ""), favorites: input.at("favorites", default: ""),
+  boundaries: input.at("boundaries", default: ""),
+  portrait: input.at("portrait", default: "assets/stelle-id.png"),
+ )
+}
+
 #let prose(value, c) = {
  for (i, paragraph) in paragraphs(value).enumerate() {
   if i > 0 { v(1.6mm) }
@@ -39,66 +86,84 @@
  )
 ]
 
-// Short entries remain inline. Lists and longer prose get the full content width.
-#let entry(label, value, c) = if present(value) {
- let items = paragraphs(value)
- let stacked = items.len() > 1 or items.any(item => item.contains("\n") or item.clusters().len() > 28)
- block(width: 100%, below: 2mm, breakable: false)[
-  #if stacked {
-   text(size: 9.5pt, weight: "bold", fill: c.gold, label)
-   v(1.5mm)
-   prose(value, c)
-   v(1.4mm)
-   line(length: 100%, stroke: 0.25pt + c.border.transparentize(35%))
-  } else {
-   grid(columns: (14mm, 1fr), column-gutter: 2mm, align: top,
-    text(size: 9.5pt, weight: "bold", fill: c.gold, label),
-    [#prose(value, c)
-     #v(1.4mm)
-     #line(length: 100%, stroke: 0.25pt + c.border.transparentize(35%))],
-   )
-  }
- ]
-}
-
-#let qr-slot(profile, c, asset) = block(
+#let qr-slot(contact, c, asset) = block(
  width: 28mm, height: 28mm, fill: white,
- stroke: 0.5pt + c.border, inset: 2mm,
+ stroke: 0.5pt + c.border, inset: 1mm,
 )[
- #if profile.at("qr_image", default: none) != none {
-  image(asset(profile.qr_image), width: 24mm, height: 24mm, fit: "contain")
+ #if contact.at("qr_image", default: none) != none {
+  image(asset(contact.qr_image), width: 26mm, height: 26mm, fit: "contain")
  } else {
   align(center + horizon)[
-   #text(size: 8.5pt, weight: "bold", fill: rgb("6A6258"))[二维码待替换]
+   #text(size: 8pt, weight: "bold", fill: rgb("6A6258"))[二维码待替换]
    #v(1.8mm)
-   #text(size: 7pt, fill: rgb("6A6258"))[放入你的联系二维码]
+   #text(size: 6.8pt, fill: rgb("6A6258"))[放入这一平台的二维码]
   ]
  }
 ]
 
-#let strip(profile, c, asset) = {
+#let show-qr(contact) = contact.at("show_qr", default: contact.at("qr_image", default: none) != none)
+#let contact-present(contact) = show-qr(contact) or (
+ "platform", "account", "note").any(key => present(contact.at(key, default: "")))
+
+// Account IDs can be unbroken Latin strings. Measure graphemes so they wrap
+// inside the fixed column without shrinking text or changing the account.
+#let account-text(value, c) = context {
+ for (i, row) in value.split("\n").enumerate() {
+  if i > 0 { linebreak() }
+  let line = ""
+  for cluster in row.clusters() {
+   let candidate = line + cluster
+   if line != "" and measure(text(size: 9pt, candidate)).width > 30.5mm {
+    text(size: 9pt, fill: c.ink, line)
+    linebreak()
+    line = cluster
+   } else {
+    line = candidate
+   }
+  }
+  text(size: 9pt, fill: c.ink, line)
+ }
+}
+
+#let contact-card(contact, c, asset) = block(width: 100%, breakable: false)[
+ #if show-qr(contact) {
+  qr-slot(contact, c, asset)
+  v(2.2mm)
+ }
+ #if present(contact.at("platform", default: "")) {
+  text(size: 9.5pt, weight: "bold", fill: c.gold, contact.platform)
+  v(1.4mm)
+ }
+ #if present(contact.at("account", default: "")) {
+  account-text(contact.account, c)
+ }
+ #if present(contact.at("note", default: "")) {
+  v(1.6mm)
+  text(size: 8pt, fill: c.muted, contact.note)
+ }
+]
+
+#let strip(raw-profile, c, asset) = {
+ let profile = normalize-profile(raw-profile)
  set document(title: "开拓者 · 漫展扩列条", author: "非官方同人模板")
  set text(font: "Noto Sans SC", size: 9pt, fill: c.ink, lang: "zh")
  set par(leading: 0.5em, spacing: 0pt)
  set block(spacing: 0pt)
  let field(key) = profile.at(key, default: "")
- let show-qr = profile.at("show_qr", default: true)
  let header = [
   #grid(columns: (1fr, auto), align: horizon,
    text(size: 6.8pt, tracking: 0.9pt, fill: c.gold)[ASTRAL EXPRESS],
    text(size: 7pt, weight: "bold", fill: c.gold)[开拓者扩列条],
   )
   #v(4mm)
-  #grid(columns: (1fr, 24mm), column-gutter: 5mm, align: horizon,
+  #grid(columns: (1fr, 24mm), column-gutter: 5mm, align: top,
    [#text(size: if profile.nickname.clusters().len() <= 4 { 22pt } else if profile.nickname.clusters().len() <= 6 { 17pt } else { 13pt },
      font: "Noto Serif CJK SC", weight: "bold", profile.nickname)
-    #if present(field("intro")) {
-     v(3mm)
-     text(size: 8.5pt, fill: c.muted, field("intro"))
-    }
-    #if present(field("location")) {
-     v(1.8mm)
-     text(size: 8.5pt, fill: c.muted)[坐标　#field("location")]
+    #if present(field("about_me")) {
+     v(2.5mm)
+     text(size: 9.5pt, weight: "bold", fill: c.gold)[About me]
+     v(1.5mm)
+     prose(field("about_me"), c)
     }
    ],
    block(stroke: 0.55pt + c.gold, inset: 1mm, fill: c.portrait)[
@@ -110,58 +175,23 @@
    text(size: 10.5pt, fill: c.gold, field("tagline"))
   }
  ]
- let personal = (("主坑", "fandoms"), ("我推", "favorites"), ("兴趣", "interests"))
- let social = (("想扩", "looking_for"), ("CP 态度", "cp"), ("日常", "preferences"), ("NG", "boundaries"))
- let contact-details = [
-  #if present(field("contact_platform")) or present(field("contact")) {
-   if present(field("contact_platform")) {
-    text(size: 9.5pt, weight: "bold", fill: c.gold, field("contact_platform"))
-    v(1.8mm)
-   }
-   text(size: 9pt, field("contact"))
-  }
-  #if present(field("uid")) {
-   v(3mm)
-   text(size: 8pt, fill: c.muted)[游戏 UID]
-   v(1.2mm)
-   text(size: 9pt, field("uid"))
-  }
- ]
+ let sections = (("坑", "fandoms"), ("我推", "favorites"), ("NG", "boundaries"), ("其他", "other"))
+ let contacts = profile.contacts.filter(contact => contact-present(contact))
  let body = [
   #header
   #let number = 0
-  #if personal.any(item => present(field(item.at(1)))) {
-   number += 1
-   section("0" + str(number), "个人属性", c)
-   for (label, key) in personal { entry(label, field(key), c) }
+  #for (title, key) in sections {
+   if present(field(key)) {
+    number += 1
+    section("0" + str(number), title, c)
+    prose(field(key), c)
+   }
   }
-  #if social.any(item => present(field(item.at(1)))) {
-   number += 1
-   section("0" + str(number), "同行小约定", c)
-   for (label, key) in social { entry(label, field(key), c) }
-  }
-  #if show-qr or ("contact_platform", "contact", "uid", "contact_note", "event", "message").any(key => present(field(key))) {
+  #if contacts.len() > 0 {
    number += 1
    section("0" + str(number), "联系方式", c)
-   if show-qr {
-    if present(field("contact_platform")) or present(field("contact")) or present(field("uid")) {
-     grid(columns: (28mm, 1fr), column-gutter: 4mm, align: horizon,
-      qr-slot(profile, c, asset), contact-details)
-    } else {
-     qr-slot(profile, c, asset)
-    }
-   } else if present(field("contact_platform")) or present(field("contact")) or present(field("uid")) {
-    contact-details
-   }
-   if present(field("contact_note")) {
-    v(2mm)
-    text(size: 7.5pt, fill: c.muted, field("contact_note"))
-   }
-   if present(field("event")) or present(field("message")) {
-    v(3mm)
-    entry("出没", field("event"), c)
-    entry("留言", field("message"), c)
-   }
+   grid(columns: (1fr, 1fr), column-gutter: 4mm, row-gutter: 4mm, align: top,
+    ..contacts.map(contact => contact-card(contact, c, asset)))
   }
   #v(5mm)
   #line(length: 100%, stroke: 0.4pt + c.gold)
