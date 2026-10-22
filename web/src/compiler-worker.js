@@ -40,7 +40,11 @@ async function readResource(path, cache = true) {
   const loading = (async () => {
     let response;
     try {
-      response = await fetch(url, { credentials: 'same-origin' });
+      response = await fetch(url, {
+        credentials: 'same-origin',
+        // Revalidate templates after a site update; fonts retain normal caching.
+        cache: path.startsWith('templates/') ? 'no-cache' : 'default',
+      });
     } catch {
       throw new Error(`无法加载 ${path}，请检查网络后重试。`);
     }

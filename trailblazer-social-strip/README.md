@@ -119,6 +119,6 @@ typst compile --root . --font-path assets/fonts --ignore-system-fonts --input th
 - 公开内容参考：[QooApp 扩列自介](https://notes.qoo-app.com/note/3531703)、[微博属性表](https://www.weibo.com/6758518172/Po80ayv20)、[扩列自介模板](https://ivanamamiya.github.io/self-intro-template/)。只参考字段与分组方式。
 - 肖像和透明车票直接复制自已确认的开拓者简历，图片像素未改变；车票是参考角色胸前装饰重绘的素材，来源说明见[开拓者简历](../trailblazer/README.md)。
 - 保留暖炭灰 / 暖白、金色、酒红两套配色，以及双线、斜角和边缘车票。
-- “同行小约定”“下一站见”为模板文案，不标注为游戏角色原台词。页首短句默认使用“愿此行，终抵群星”。
+- 栏目标题为“个人属性”“同行小约定”“联系方式”，不附加小字副标题。“同行小约定”为模板文案，不标注为游戏角色原台词。页首短句默认使用“愿此行，终抵群星”。
 - 随包使用 Noto Sans SC 和 Noto Serif CJK SC Bold，保留 `assets/fonts/` 中的 SIL OFL 许可。
 - 本项目为非官方同人模板，角色与游戏素材版权归原权利人所有。

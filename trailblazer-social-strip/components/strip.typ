@@ -29,14 +29,13 @@
  }
 }
 
-#let section(number, title, hint, c) = block(
+#let section(number, title, c) = block(
  width: 100%, above: 3mm, below: 2.2mm, sticky: true,
  fill: c.panel, stroke: (left: 1.8pt + c.red), inset: (x: 2mm, y: 1.3mm),
 )[
- #grid(columns: (6mm, 1fr, auto), column-gutter: 1.5mm, align: horizon,
+ #grid(columns: (6mm, 1fr), column-gutter: 1.5mm, align: horizon,
   text(size: 11.2pt, weight: "bold", fill: c.gold, number),
   text(size: 11.2pt, weight: "bold", fill: c.ink, title),
-  text(size: 6.5pt, fill: c.muted, hint),
  )
 ]
 
@@ -133,17 +132,17 @@
   #let number = 0
   #if personal.any(item => present(field(item.at(1)))) {
    number += 1
-   section("0" + str(number), "个人属性", "喜欢的事物", c)
+   section("0" + str(number), "个人属性", c)
    for (label, key) in personal { entry(label, field(key), c) }
   }
   #if social.any(item => present(field(item.at(1)))) {
    number += 1
-   section("0" + str(number), "同行小约定", "相处 / 边界", c)
+   section("0" + str(number), "同行小约定", c)
    for (label, key) in social { entry(label, field(key), c) }
   }
   #if show-qr or ("contact_platform", "contact", "uid", "contact_note", "event", "message").any(key => present(field(key))) {
    number += 1
-   section("0" + str(number), "下一站见", "联系方式", c)
+   section("0" + str(number), "联系方式", c)
    if show-qr {
     if present(field("contact_platform")) or present(field("contact")) or present(field("uid")) {
      grid(columns: (28mm, 1fr), column-gutter: 4mm, align: horizon,

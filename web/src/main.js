@@ -52,7 +52,7 @@ function renderForm(preserveOpen = false) {
   if (state.kind === 'strip') {
     html = section('about', '称呼与头像',
       field('nickname', '昵称 / CN', { max: 24 }) + field('intro', '一句话介绍', { optional: true, max: 200 }) + field('location', '常驻城市', { optional: true, max: 100 }) + field('tagline', '页首短句', { optional: true, max: 100 }) + upload('portrait', '替换头像'), true)
-      + section('interests', '个人属性 · 喜欢的事物', '<p class="section-help">写喜欢的作品、人物和其他兴趣。支持多行文字，留空就不显示。</p>' + field('fandoms', '主坑', { multiline: true, optional: true }) + field('favorites', '我推', { multiline: true, optional: true }) + field('interests', '其他兴趣', { multiline: true, optional: true }), true)
+      + section('interests', '个人属性', '<p class="section-help">写喜欢的作品、人物和其他兴趣。支持多行文字，留空就不显示。</p>' + field('fandoms', '主坑', { multiline: true, optional: true }) + field('favorites', '我推', { multiline: true, optional: true }) + field('interests', '其他兴趣', { multiline: true, optional: true }), true)
       + section('social', '相处与边界', field('looking_for', '想扩什么样的朋友', { multiline: true, optional: true }) + field('cp', 'CP 态度', { multiline: true, optional: true, placeholder: '例如：拒所有 CP / 杂食 / 填写偏好；也可以不写', hint: '留空时整行隐藏，不需要有喜欢的 CP。' }) + field('preferences', '日常与互动习惯', { multiline: true, optional: true }) + field('boundaries', 'NG / 希望避开的内容', { multiline: true, optional: true }))
       + section('contact', '联系方式', field('contact_platform', '平台', { optional: true, max: 100 }) + field('contact', '账号', { optional: true, max: 200 }) + field('uid', '游戏 UID', { optional: true, max: 60 }) + field('contact_note', '加好友备注', { optional: true, max: 300 }) + `<label class="check-field"><input type="checkbox" data-path="show_qr" ${state.profiles.strip.show_qr ? 'checked' : ''} />显示二维码区域</label>` + upload('qr_image', '上传联系二维码'))
       + section('extra', '更多留言', field('event', '漫展 / 出没', { multiline: true, optional: true }) + field('message', '留言', { multiline: true, optional: true }) + field('closing', '页尾短句', { optional: true, max: 200 }));
@@ -128,7 +128,7 @@ async function renderPreview() {
   }
 }
 async function readJSON(path) {
-  const response = await fetch(new URL(path, base));
+  const response = await fetch(new URL(path, base), { cache: 'no-cache' });
   if (!response.ok) throw new Error('模板资料加载失败，请刷新页面重试。');
   return response.json();
 }
