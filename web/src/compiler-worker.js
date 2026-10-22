@@ -4,6 +4,7 @@ import { loadFonts } from '@myriaddreamin/typst.ts/options.init';
 import compilerWasmURL from '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url';
 import rendererWasmURL from '@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url';
 import { contactImageKey, normalizeStripProfile, stripImageKeys } from './strip-profile.js';
+import { FontManager } from './font-manager.js';
 
 // JS wrappers and both WASM packages are pinned together in package-lock.json.
 const VERSION = '0.8.0-rc3';
@@ -23,6 +24,7 @@ const templateFiles = {
 
 let compiler;
 let renderer;
+let fontManager;
 let baseURL;
 let initialized = false;
 let queue = Promise.resolve();
@@ -72,22 +74,20 @@ async function initialize(message) {
     return;
   }
   baseURL = requestedURL.href;
-  progress(message.id, '正在加载中文字体，首次打开需要稍等…');
-  const fonts = await Promise.all([
-    readResource('fonts/NotoSansSC.ttf', false),
-    readResource('fonts/NotoSerifCJKsc-Bold.otf', false),
-  ]);
-  progress(message.id, '正在初始化本地排版引擎…');
+  progress(message.id, '正在加载常用字库与排版引擎…');
+  fontManager = new FontManager(baseURL, compilerWasmURL);
   compiler = createTypstCompiler();
   renderer = createTypstRenderer();
   await Promise.all([
+    fontManager.loadCommon(),
     compiler.init({
       getModule: () => compilerWasmURL,
       // Explicit false also prevents typst.ts from adding its default CDN fonts.
-      beforeBuild: [loadFonts(fonts, { assets: false })],
+      beforeBuild: [loadFonts([], { assets: false })],
     }),
     renderer.init({ getModule: () => rendererWasmURL }),
   ]);
+  await fontManager.install(compiler);
   initialized = true;
 }
 
@@ -162,6 +162,9 @@ async function compile(message) {
   }
   const profile = kind === 'strip' ? normalizeStripProfile(payload.profile)
     : structuredClone(payload.profile);
+  await fontManager.ensure(compiler, kind, profile,
+    files.filter(([path]) => path.endsWith('.typ')).map(([, contents]) => decoder.decode(contents)).join('\n'),
+    (message) => progress(id, message));
   mapUserImages(kind, profile, payload.images);
   compiler.mapShadow('/config/profile.json', encoder.encode(JSON.stringify(profile)));
 

@@ -410,3 +410,59 @@ test('small-screen editor has no horizontal overflow and supports export', async
   await currentPDF(page);
   await page.screenshot({ path: testInfo.outputPath('strip-mobile.png'), fullPage: true });
 });
+
+test('first preview only downloads compact fonts and reload reuses their local cache', async ({ page }) => {
+  const fontRequests = [];
+  const fontResponses = [];
+  page.on('request', (request) => { if (request.url().includes('/fonts/')) fontRequests.push(request.url()); });
+  page.on('response', (response) => { if (response.url().includes('/fonts/')) fontResponses.push(response); });
+  await start(page);
+  expect(fontRequests).toHaveLength(2);
+  expect(fontRequests.every((url) => /-common-.*\.gz$/.test(url))).toBe(true);
+  // response.body() is already decompressed by browsers when the server marks
+  // .gz files with Content-Encoding. Content-Length measures the download.
+  const bytes = fontResponses.reduce((sum, response) => sum + Number(response.headers()['content-length']), 0);
+  expect(bytes).toBeGreaterThan(0);
+  expect(bytes).toBeLessThan(8_000_000);
+  // CacheStorage must work even when a new network font request would fail.
+  await page.route('**/fonts/**', (route) => route.abort());
+  fontRequests.length = 0;
+  await page.reload();
+  await ready(page);
+  expect(fontRequests).toEqual([]);
+  await currentPDF(page);
+});
+
+test('rare characters load complete fonts on demand and failed upgrades can be retried', async ({ page }, testInfo) => {
+  const fullRequests = [];
+  page.on('request', (request) => { if (request.url().includes('-full-')) fullRequests.push(request.url()); });
+  await start(page);
+  const originalName = await page.locator('[data-path="nickname"]').inputValue();
+  const originalOther = await (await input(page, 'other')).inputValue();
+  // Normalize the textarea representation before comparing identical content.
+  await fill(page, 'other', originalOther);
+  await ready(page);
+  const baseline = await exportFile(page, '#download-png');
+  // This supplementary-plane character exists only in the original serif font,
+  // so body fallback must still work even though the body normally uses sans.
+  await fill(page, 'other', '𠮷（生僻字测试）');
+  await ready(page);
+  expect(fullRequests).toHaveLength(1);
+  expect(fullRequests[0]).toContain('/serif-full-');
+  await writeFile(testInfo.outputPath('rare-body.pdf'), (await currentPDF(page)).bytes);
+  await fill(page, 'other', originalOther);
+  await ready(page);
+  await page.route('**/fonts/sans-full-*', (route) => route.abort());
+  await fill(page, 'nickname', '龘');
+  await expect(page.locator('#status')).toHaveClass(/error/);
+  await expect(page.locator('#download-pdf')).toBeDisabled();
+  await page.unroute('**/fonts/sans-full-*');
+  await page.locator('#refresh').click();
+  await ready(page);
+  await writeFile(testInfo.outputPath('rare-name.pdf'), (await currentPDF(page)).bytes);
+  await fill(page, 'nickname', originalName);
+  await ready(page);
+  // Restoring the same content must produce the same pixels with full/subset fonts.
+  const restored = await exportFile(page, '#download-png');
+  expect(createHash('sha256').update(restored.bytes).digest('hex')).toBe(createHash('sha256').update(baseline.bytes).digest('hex'));
+});
