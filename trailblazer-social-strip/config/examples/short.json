@@ -1,6 +1,6 @@
 {
   "nickname": "短版示例",
-  "about_me": "填写 CN / 城市，留一句简短介绍。",
+  "about_me": "填写常驻城市，留一句简短介绍。",
   "tagline": "愿此行，终抵群星",
   "fandoms": "例：星穹铁道 / 喜欢的动漫",
   "favorites": "填写喜欢的角色",
@@ -16,6 +16,6 @@
       "qr_image": null
     }
   ],
-  "closing": "愿此行，终抵群星！",
-  "portrait": "assets/stelle-id.png"
+  "portrait": "assets/stelle-id.png",
+  "uid": ""
 }

@@ -62,7 +62,7 @@ function renderForm(preserveOpen = false) {
   let html;
   if (state.kind === 'strip') {
     html = section('about', 'About me · 称呼与头像',
-      field('nickname', '昵称 / CN', { max: 24 }) + field('about_me', 'About me', { multiline: true, optional: true, placeholder: '年龄 / MBTI / 常驻城市\n性格、日常爱好，或一句自我介绍', hint: '显示在头像左侧，可分行填写；内容较多时自然向下展开。' }) + upload('portrait', '替换头像') + field('tagline', '页首短句', { optional: true, max: 100 }) + field('closing', '页尾短句', { optional: true, max: 200 }), true)
+      field('nickname', '昵称 / CN', { max: 24 }) + field('about_me', 'About me', { multiline: true, optional: true, placeholder: '年龄 / MBTI / 常驻城市\n性格、日常爱好，或一句自我介绍', hint: '显示在头像左侧，可分行填写；内容较多时自然向下展开。' }) + upload('portrait', '替换头像') + field('uid', '游戏 UID', { optional: true, max: 60, placeholder: '显示在头像下方' }) + field('tagline', '页首短句', { optional: true, max: 100 }), true)
       + section('fandoms', '01 / 坑', field('fandoms', '坑', { multiline: true, optional: true, placeholder: '喜欢的 IP、游戏、动画、作品或圈子\n也可以分组写常驻和近期兴趣' }), true)
       + section('favorites', '02 / 我推', field('favorites', '我推', { multiline: true, optional: true, placeholder: '喜欢的角色，可按作品分组' }))
       + section('boundaries', '03 / NG', field('boundaries', 'NG', { multiline: true, optional: true, placeholder: '希望避开的内容、互动边界等；没有可以留空' }))
@@ -384,11 +384,11 @@ $('#draft-file').addEventListener('change', async (event) => {
 
 async function start() {
   try {
-    const [standard, short, long, resume] = await Promise.all([
+    const [standard, short, resume] = await Promise.all([
       readJSON('templates/strip/config/profile.json'), readJSON('templates/strip/config/examples/short.json'),
-      readJSON('templates/strip/config/examples/long.json'), readJSON('templates/resume-dark/config/profile.json'),
+      readJSON('templates/resume-dark/config/profile.json'),
     ]);
-    presets.default = normalizeStripProfile(standard); presets.short = normalizeStripProfile(short); presets.long = normalizeStripProfile(long); presets.resume = resume;
+    presets.default = normalizeStripProfile(standard); presets.short = normalizeStripProfile(short); presets.resume = resume;
     state.profiles.strip = clone(presets.default); state.profiles.resume = clone(resume);
     renderForm(); await renderPreview();
   } catch (error) { setStatus(error.message, 'error'); $('#preview-stage').setAttribute('aria-busy', 'false'); }

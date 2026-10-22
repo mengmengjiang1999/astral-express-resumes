@@ -108,6 +108,10 @@ test('edits, CP boundary and theme produce matching PDF/PNG without sending pers
   context.on('request', (request) => requests.push({ url: request.url(), method: request.method() }));
   await start(page);
   await page.locator('#auto-preview').uncheck();
+  await expect(page.locator('[data-path="closing"]')).toHaveCount(0);
+  expect(await page.locator('#preset option').evaluateAll((options) => options.map((option) => option.value))).toEqual(['default', 'short']);
+  expect(await page.locator('[data-path="about_me"]').inputValue()).not.toContain('CN');
+  await fill(page, 'uid', '123456789');
   await fill(page, 'nickname', '测试旅人');
   await fill(page, 'boundaries', '拒所有 CP');
   await page.locator('[data-theme="dark"]').click();
@@ -115,9 +119,10 @@ test('edits, CP boundary and theme produce matching PDF/PNG without sending pers
   await page.locator('#refresh').click();
   await ready(page);
   const request = await page.evaluate(() => window.__lastCompilation.request);
-  expect(request).toMatchObject({ kind: 'strip', theme: 'dark', profile: { nickname: '测试旅人', boundaries: '拒所有 CP' } });
+  expect(request).toMatchObject({ kind: 'strip', theme: 'dark', profile: { nickname: '测试旅人', uid: '123456789', closing: '愿此行，终抵群星！', boundaries: '拒所有 CP' } });
   const pdf = await currentPDF(page);
   expect(pdf.name).toBe('trailblazer-strip-dark.pdf');
+  await writeFile(testInfo.outputPath('uid-footer.pdf'), pdf.bytes);
   expect(pdf.width).toBeCloseTo(80, 1);
   const png = await exportFile(page, '#download-png');
   expect(png.name).toBe('trailblazer-strip-dark.png');
@@ -156,10 +161,11 @@ test('resume switches in both palettes, remains one A4 page and preserves the st
   await ready(page);
 });
 
-test('long/short presets resize the strip and entirely blank optional groups collapse', async ({ page }, testInfo) => {
+test('long content expands the standard strip and blank optional groups collapse', async ({ page }, testInfo) => {
   await start(page);
   const standard = await currentPDF(page);
-  await preset(page, 'long');
+  await fill(page, 'fandoms', Array.from({ length: 35 }, (_, index) => `第${index + 1}项：喜欢的游戏与动画作品，记录共同的话题。`).join('\n'));
+  await ready(page);
   const long = await currentPDF(page);
   expect(long.height).toBeGreaterThan(300);
   expect(long.height).toBeGreaterThan(standard.height * 1.5);
@@ -288,7 +294,7 @@ test('old drafts migrate all personal content and their QR into the new structur
   const qr = await uploadFixture(page, '#713ada', 'legacy-qr.png');
   const old = {
     version: 1, kind: 'strip', theme: 'dark',
-    profile: { nickname: '旧版旅人', intro: '慢热但喜欢聊天', location: '上海', fandoms: '星穹铁道', favorites: '开拓者', interests: '音乐', looking_for: '同好朋友', cp: '拒所有 CP', boundaries: '不催回', preferences: '偶尔发日常', event: '漫展见', message: '欢迎扩列', contact_platform: 'QQ', contact: 'legacy-account', contact_note: '加好友备注漫展', uid: '123456789', show_qr: true, qr_image: null },
+    profile: { nickname: '旧版旅人', intro: '慢热但喜欢聊天', location: '上海', fandoms: '星穹铁道', favorites: '开拓者', interests: '音乐', looking_for: '同好朋友', cp: '拒所有 CP', boundaries: '不催回', preferences: '偶尔发日常', event: '漫展见', message: '欢迎扩列', contact_platform: 'QQ', contact: 'legacy-account', contact_note: '加好友备注漫展', uid: '123456789', closing: '旧版自定义尾句不应显示', show_qr: true, qr_image: null },
     images: { qr_image: { name: qr.name, base64: qr.buffer.toString('base64') } },
   };
   await page.locator('#draft-file').setInputFiles({ name: 'legacy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(old)) });
@@ -300,7 +306,9 @@ test('old drafts migrate all personal content and their QR into the new structur
   expect(paragraphs(migrated.profile.about_me)).toContain('上海');
   for (const value of ['音乐', '同好朋友', '拒所有 CP', '偶尔发日常', '漫展见', '欢迎扩列']) expect(paragraphs(migrated.profile.other)).toContain(value);
   expect(migrated.profile.contacts[0]).toMatchObject({ platform: 'QQ', account: 'legacy-account', note: '加好友备注漫展', show_qr: true });
-  expect(migrated.profile.contacts[1]).toMatchObject({ platform: '游戏 UID', account: '123456789', show_qr: false });
+  expect(migrated.profile.uid).toBe('123456789');
+  expect(migrated.profile.contacts).toHaveLength(1);
+  expect(migrated.profile.closing).toBe('愿此行，终抵群星！');
   expect(migrated.images[`contact-${migrated.profile.contacts[0].id}`].base64).toBe(qr.buffer.toString('base64'));
   const svg = await page.locator('#preview-image').evaluate(async (img) => (await fetch(img.src)).text());
   expect(svg).toContain(qr.buffer.toString('base64'));

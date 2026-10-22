@@ -2,7 +2,7 @@
 
 沿用开拓者简历的金色、酒红、双线斜角边框与列车票装饰，提供深色和浅色两版。**宽度固定为 80 mm，高度随内容自动伸缩**。正文为 9 pt，栏目标题为 11.2 pt。正文区域没有卡片底色；只有栏目标题保留分区色，二维码保留白色底。
 
-页首在昵称下提供 **About me** 自由介绍，右侧头像与昵称顶端对齐。正文依次为 **坑、我推、NG、其他、联系方式**；没有填写的栏目自动隐藏，编号连续。每个平台的二维码、账号和备注组成一项独立联系方式。
+页首在昵称下提供 **About me** 自由介绍，右侧头像与昵称顶端对齐，头像下方留有独立 UID 区域。尾部固定为“愿此行，终抵群星！”，不可通过资料修改。正文依次为 **坑、我推、NG、其他、联系方式**；没有填写的栏目自动隐藏，编号连续。每个平台的二维码、账号和备注组成一项独立联系方式。
 
 ## 成品
 
@@ -17,13 +17,12 @@
 
 ## 长短内容如何适配
 
-![同一模板的三种长度](output/images/trailblazer-strip-lengths.png)
+![简短版与标准版](output/images/trailblazer-strip-lengths.png)
 
 - **短版**：[config/examples/short.json](config/examples/short.json)，短自介、喜欢的作品与角色，1 项纯文字联系方式。
 - **常规版**：[config/profile.json](config/profile.json)，五个栏目齐全，QQ、微信各有独立二维码占位。
-- **长版**：[config/examples/long.json](config/examples/long.json)，多段自我介绍和正文，QQ、微信、小红书、B站共 4 项联系方式。
 
-三种长度使用同一份排版，不需要手动选择尺寸。About me 在头像左侧自然换行并向下扩展；正文段落使用完整内容宽度。联系方式为双列，每格约 30.5 mm，奇数项的最后一格靠左。空段落与空栏目不保留空白，边框和车票随页面高度调整。
+简短版与标准版使用同一份排版；标准版填写更多内容时同样会自动变长，不需要手动选择尺寸。About me 在头像左侧自然换行并向下扩展；正文段落使用完整内容宽度。联系方式为双列，每格约 30.5 mm，奇数项的最后一格靠左。空段落与空栏目不保留空白，边框和车票随页面高度调整。
 
 长条 PDF 和 PNG 保持完整内容。**高度超过 267 mm 时，不生成 A4 拼版**，构建会提示并移除该输出目录旧的 A4 文件，避免误印。可用长图在线分享，或把单张 PDF 按实际尺寸交给支持长条纸张的打印服务。单张 PDF 是净尺寸、无出血；专业印刷所需出血按印厂要求另行处理。
 
@@ -34,14 +33,14 @@
 | 字段 | 用途 |
 | --- | --- |
 | `nickname` | 昵称 / CN，必填，最多 24 个字符；长昵称可换行 |
-| `about_me` | 昵称下的自由介绍，可写 CN、城市、状态与互动习惯 |
+| `about_me` | 昵称下的自由介绍，可写城市、性格、状态与互动习惯，无需重复填写 CN |
 | `tagline` | 页首短句 |
 | `fandoms` | “坑”：喜欢的游戏、动漫、小说、电影或圈子 |
 | `favorites` | “我推”：喜欢的角色、组合或人物 |
 | `boundaries` | “NG”：希望避开的话题或行为 |
 | `other` | “其他”：作品以外的兴趣、日常、约展、留言等自由补充 |
 | `contacts` | 联系方式数组，支持 0 至 12 项；顺序即展示顺序 |
-| `closing` | 页脚短句 |
+| `uid` | 头像下方的游戏 UID；留空时保留填写横线 |
 | `portrait` | 头像的项目内相对路径；省略时使用 `assets/stelle-id.png` |
 
 `about_me`、`fandoms`、`favorites`、`boundaries`、`other` 支持字符串或字符串数组，每项是一段。字符串中也可以用 `\n` 手动换行。以下两种写法都可以：
@@ -52,7 +51,7 @@
 
 ```json
 "about_me": [
-  "填写自己的 CN、常驻城市或近期状态。",
+  "填写自己的常驻城市、性格或近期状态。",
   "这里可以继续介绍日常习惯、喜欢的话题和想认识的朋友。"
 ]
 ```
@@ -99,9 +98,9 @@
 | `intro`、`location`、`call_me` | `about_me`，城市和称呼保留说明文字 |
 | `interests`、`cp`、`looking_for`、`preferences`、`event`、`message`、`same_fans` | `other`，分段并保留原文 |
 | `contact_platform`、`contact`、`contact_note`、`show_qr`、`qr_image` | `contacts` 中的一项 |
-| `uid` | `contacts` 中独立的纯文字“游戏 UID”项 |
+| `uid` | 头像下方的 UID 区域 |
 
-`nickname`、`tagline`、`fandoms`、`favorites`、`boundaries`、`closing`、`portrait` 保持同名。建议迁移后删除旧字段，避免产生两套资料。`contacts: []` 表示主动清空联系方式，旧的顶层联系方式不会重新出现。构建器会检查字段类型、重复 ID、未知键和素材路径，并核对所有实际显示的正文和联系文字；ID 与图片路径不会被当成正文。
+`nickname`、`tagline`、`fandoms`、`favorites`、`boundaries`、`portrait` 保持同名。旧 `closing` 字段会被忽略，尾部始终使用固定短句。建议迁移后删除旧字段，避免产生两套资料。`contacts: []` 表示主动清空联系方式，旧的顶层联系方式不会重新出现。构建器会检查字段类型、重复 ID、未知键和素材路径，并核对所有实际显示的正文和联系文字；ID 与图片路径不会被当成正文。
 
 ## 构建
 
@@ -121,10 +120,9 @@ Windows 激活命令为 `.venv\Scripts\activate`；macOS 可通过 `brew install
 
 ```sh
 python scripts/build.py --profile config/examples/short.json --output-dir output/short
-python scripts/build.py --profile config/examples/long.json --output-dir output/long
 ```
 
-每次构建都会生成两版 PDF、180 dpi 预览、600 dpi 图片、配色对照图和 `manifest.json`。可放入 A4 时另生成拼版。发布输出前会检查单页、80 mm 宽以及全部非空可见文字是否完整。长短示例的对照图另保存为 `output/images/trailblazer-strip-short-comparison.png`、`trailblazer-strip-long-comparison.png`，三种长度总览为 `trailblazer-strip-lengths.png`。
+每次构建都会生成两版 PDF、180 dpi 预览、600 dpi 图片、配色对照图和 `manifest.json`。可放入 A4 时另生成拼版。发布输出前会检查单页、80 mm 宽以及全部非空可见文字是否完整。简短版对照图另保存为 `output/images/trailblazer-strip-short-comparison.png`，两种示例总览为 `trailblazer-strip-lengths.png`。
 
 也可以用 Typst CLI 单独编译，页面高度同样自动适配：
 

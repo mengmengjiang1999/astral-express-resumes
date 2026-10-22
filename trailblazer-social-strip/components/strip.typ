@@ -50,14 +50,10 @@
     qr_image: input.at("qr_image", default: none),
    ))
   }
-  if present(input.at("uid", default: "")) {
-   contacts.push((id: "legacy-uid", platform: "游戏 UID", account: input.uid,
-    note: "", show_qr: false, qr_image: none))
-  }
  }
  (
   nickname: input.nickname, about_me: about, other: other, contacts: contacts,
-  tagline: input.at("tagline", default: ""), closing: input.at("closing", default: ""),
+  tagline: input.at("tagline", default: ""), uid: input.at("uid", default: ""),
   fandoms: input.at("fandoms", default: ""), favorites: input.at("favorites", default: ""),
   boundaries: input.at("boundaries", default: ""),
   portrait: input.at("portrait", default: "assets/stelle-id.png"),
@@ -107,21 +103,21 @@
 
 // Account IDs can be unbroken Latin strings. Measure graphemes so they wrap
 // inside the fixed column without shrinking text or changing the account.
-#let account-text(value, c) = context {
+#let account-text(value, c, width: 30.5mm, size: 9pt) = context {
  for (i, row) in value.split("\n").enumerate() {
   if i > 0 { linebreak() }
   let line = ""
   for cluster in row.clusters() {
    let candidate = line + cluster
-   if line != "" and measure(text(size: 9pt, candidate)).width > 30.5mm {
-    text(size: 9pt, fill: c.ink, line)
+   if line != "" and measure(text(size: size, candidate)).width > width {
+    text(size: size, fill: c.ink, line)
     linebreak()
     line = cluster
    } else {
     line = candidate
    }
   }
-  text(size: 9pt, fill: c.ink, line)
+  text(size: size, fill: c.ink, line)
  }
 }
 
@@ -166,8 +162,12 @@
      prose(field("about_me"), c)
     }
    ],
-   block(stroke: 0.55pt + c.gold, inset: 1mm, fill: c.portrait)[
-    #image(asset(profile.at("portrait", default: "assets/stelle-id.png")), width: 22mm, height: 33mm, fit: "contain")
+   [
+    #block(stroke: 0.55pt + c.gold, inset: 1mm, fill: c.portrait)[
+     #image(asset(profile.at("portrait", default: "assets/stelle-id.png")), width: 22mm, height: 33mm, fit: "contain")
+    ]
+    #v(1.5mm)
+    #align(center, account-text("UID：" + if present(field("uid")) { field("uid") } else { "__________" }, c, width: 24mm, size: 7pt))
    ],
   )
   #if present(field("tagline")) {
@@ -195,10 +195,8 @@
   }
   #v(5mm)
   #line(length: 100%, stroke: 0.4pt + c.gold)
-  #if present(field("closing")) {
-   v(2mm)
-   align(center, text(size: 9pt, fill: c.gold, field("closing")))
-  }
+  #v(2mm)
+  #align(center, text(size: 9pt, fill: c.gold)[愿此行，终抵群星！])
  ]
  // Measure once at the final content width; no font shrinking or page clipping.
  context {

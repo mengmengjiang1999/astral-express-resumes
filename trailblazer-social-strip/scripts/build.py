@@ -41,7 +41,7 @@ HIDDEN_FIELDS = ASSET_FIELDS | {"id", "show_qr"}
 LEGACY_FALLBACK_FIELDS = {
     "about_me": frozenset(("intro", "location", "call_me")),
     "other": frozenset(("interests", "cp", "looking_for", "preferences", "event", "message", "same_fans")),
-    "contacts": frozenset(("contact_platform", "contact", "contact_note", "uid")),
+    "contacts": frozenset(("contact_platform", "contact", "contact_note")),
 }
 STRIP_WIDTH = 80 * mm
 A4_MAX_HEIGHT = 267 * mm
@@ -158,7 +158,7 @@ def actual_text(profile):
         elif isinstance(value, str) and normalized(value):
             yield label, normalized(value)
 
-    ignored_legacy = set()
+    ignored_legacy = {"closing"}
     for replacement, legacy_fields in LEGACY_FALLBACK_FIELDS.items():
         if replacement in profile:
             ignored_legacy.update(legacy_fields)

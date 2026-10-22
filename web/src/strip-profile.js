@@ -103,8 +103,6 @@ function legacyContacts(source) {
   }, 'legacy');
   if ([oldContact.platform, oldContact.account, oldContact.note].some((item) => item.trim())
       || oldContact.show_qr || oldContact.qr_image) result.push(oldContact);
-  const uid = text(source.uid, '游戏 UID', 60);
-  if (uid.trim()) result.push(contact({ platform: '游戏 UID', account: uid }, 'legacy-uid'));
   return result;
 }
 
@@ -117,6 +115,7 @@ export function normalizeStripProfile(source) {
   if (!portrait.trim()) throw new Error('头像路径不能为空。');
   return {
     nickname,
+    uid: text(source.uid, '游戏 UID', 60),
     about_me: has(source, 'about_me') ? paragraph(source.about_me, '关于我')
       : legacyParagraphs(source, [['intro', ''], ['location', '常驻']], '关于我'),
     tagline: text(source.tagline, '页首短句', 200),
@@ -127,7 +126,7 @@ export function normalizeStripProfile(source) {
       ['interests', '兴趣'], ['looking_for', '想扩'], ['cp', 'CP 偏好'],
       ['preferences', '相处习惯'], ['event', '相遇'], ['message', '留言'],
     ], '其他'),
-    closing: text(source.closing, '结语', 300),
+    closing: '愿此行，终抵群星！',
     portrait,
     contacts: has(source, 'contacts') ? contacts(source.contacts) : legacyContacts(source),
   };

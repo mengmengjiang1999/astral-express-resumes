@@ -17,7 +17,7 @@ for (const [source, target] of [['trailblazer', 'resume-dark'], ['trailblazer-li
     await copy(`${source}/${file}`, `templates/${target}/${file}`);
   }
 }
-for (const file of ['main.typ', 'components/strip.typ', 'config/themes.typ', 'config/profile.json', 'config/examples/short.json', 'config/examples/long.json', 'assets/stelle-id.png', 'assets/express-ticket-redrawn.png']) {
+for (const file of ['main.typ', 'components/strip.typ', 'config/themes.typ', 'config/profile.json', 'config/examples/short.json', 'assets/stelle-id.png', 'assets/express-ticket-redrawn.png']) {
   await copy(`trailblazer-social-strip/${file}`, `templates/strip/${file}`);
 }
 await copy('trailblazer-social-strip/assets/fonts', 'fonts');
