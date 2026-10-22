@@ -3,7 +3,7 @@
   "themes": {
     "dark": {
       "width_mm": 80.0,
-      "height_mm": 199.109,
+      "height_mm": 195.182,
       "pages": 1,
       "pdf": "pdf/trailblazer-strip-dark.pdf",
       "preview": "images/trailblazer-strip-dark-preview.png",
@@ -11,7 +11,7 @@
     },
     "light": {
       "width_mm": 80.0,
-      "height_mm": 199.109,
+      "height_mm": 195.182,
       "pages": 1,
       "pdf": "pdf/trailblazer-strip-light.pdf",
       "preview": "images/trailblazer-strip-light-preview.png",
