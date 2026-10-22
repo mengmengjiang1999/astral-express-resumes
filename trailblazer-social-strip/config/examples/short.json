@@ -1,17 +1,17 @@
 {
-  "nickname": "短版示例",
-  "about_me": "填写常驻城市，留一句简短介绍。",
+  "nickname": "小灰",
+  "about_me": "02 / INFP / 杭州\n慢热，熟了话很多。",
   "tagline": "愿此行，终抵群星",
-  "fandoms": "例：星穹铁道 / 喜欢的动漫",
-  "favorites": "填写喜欢的角色",
-  "boundaries": "",
-  "other": "",
+  "fandoms": "星穹铁道 / 星露谷物语 / 夏目友人帐",
+  "favorites": "星 / 三月七 / 丹恒，喜欢列车组！",
+  "boundaries": "不聊 CP，拒拉踩和催回。",
+  "other": "爱拍天空，欢迎互赞、一起逛展。",
   "contacts": [
     {
       "id": "qq",
       "platform": "QQ",
-      "account": "填写账号",
-      "note": "欢迎来聊共同的作品",
+      "account": "示例账号 · 请替换",
+      "note": "备注「小灰扩列」就好",
       "show_qr": false,
       "qr_image": null
     }
