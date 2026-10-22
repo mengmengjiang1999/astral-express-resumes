@@ -1,56 +1,47 @@
 #import "template.typ": *
-#show: resume
 
-// 在引号中填写你的 UID；留空时显示填写横线。
-#let uid = ""
+// 内容集中在 JSON；可用 --input profile=config/your-profile.json 切换资料。
+#let profile = json(sys.inputs.at("profile", default: "config/profile.json"))
+#assert(profile.name.trim() != "", message: "name 不能为空")
+#assert(profile.name.clusters().len() <= 10, message: "name 最多 10 个字符")
+#show: body => resume(profile, body)
+
 #grid(columns: (1fr, auto), text(size: 8pt, tracking: 2pt, fill: gold)[ASTRAL EXPRESS], text(size: 7pt, fill: gold)[求职简历 / CURRICULUM VITAE])
 #v(3.5mm)
 // 依用户提供的胸前车票参考重绘，小尺寸边框装饰。
 #place(top + left, dx: 178mm, dy: 237mm)[
  #image("assets/express-ticket-redrawn.png", height: 22mm)
 ]
-#header(uid)
-#v(3mm)
-#block(stroke: (top: 0.6pt + gold, bottom: 0.6pt + gold), inset: (y: 2.5mm))[
- #grid(columns: (1fr, 1fr, 1fr), column-gutter: 4mm,
-  fact("项目背景", "EXPERIENCE", [跨区域危机处理]),
-  fact("所属", "AFFILIATION", [星穹列车 · 列车组]),
-  fact("核心优势", "STRENGTH", [执行 · 调查 · 协作]))
-]
+#header(profile)
 
-#section("01", "技术栈", "COMBAT PATHS")
-#block(inset: 2.5mm)[
- #grid(columns: (28mm, 1fr), column-gutter: 3mm, row-gutter: 1.6mm, align: horizon,
-  ..path-row("毁灭 · 物理", [以球棒实施单体与扩散打击，承担正面突破任务。]),
-  ..path-row("存护 · 火", [以炎枪吸引火力、提供护盾，保护团队行动空间。]),
-  ..path-row("同谐 · 虚数", [提高击破特攻，协助队友造成超击破伤害。]),
-  ..path-row("记忆 · 冰", [召唤忆灵迷迷，提供行动提前与真实伤害支援。]),
-  ..path-row("欢愉 · 雷", [协助队友施放欢愉技，参与欢愉体系协同输出。]),
- )
-]
-#section("02", "专业能力", "CORE COMPETENCIES")
-#grid(columns: (1fr, 1fr), column-gutter: 4mm, row-gutter: 2.5mm,
- skill("现场执行", "应变 / 抗压", [适应陌生环境与突发变化；能在高风险任务中承担突破、守护和协同支援职责。]),
- skill("调查分析", "线索 / 判断", [通过实地探索、访谈与信息比对推进调查，在不完整信息下逐步明确问题。]),
- skill("沟通协调", "跨阵营 / 合作", [理解不同群体的立场与需求，寻找共同目标，推动临时伙伴形成行动合力。]),
- skill("学习适应", "成长 / 责任", [在旅途中掌握不同命途的能力，并根据任务调整角色；重视承诺与团队成果。]),
-)
-#section("03", "项目经历", "PROJECT EXPERIENCE")
-#stop("01", "空间站入侵应急处置", "空间站「黑塔」 / 应急执行",
- [配合空间站与列车组应对反物质军团入侵，在突发战斗中快速适应现场环境。],
- [击败末日兽，完成首次高风险协同行动，维护黑塔空间站安全。])
-#stop("02", "贝洛伯格星核危机处理", "雅利洛-VI / 调查与协调",
- [调查星核引发的寒潮与裂界侵蚀，协调当地各方应对城市生存危机。],
- [协助封印星核，推动贝洛伯格地表城区与地下居民区恢复往来。])
-#stop("03", "罗浮异常事件联合应对", "仙舟「罗浮」 / 联合作战",
- [随列车组追查药王秘传与建木异变，配合仙舟伙伴开展调查及现场行动。],
- [与景元、丹恒等共同迎战幻胧，协助化解危机，巩固列车与仙舟的合作关系。])
-#stop("04", "匹诺康尼梦境危机处置", "匹诺康尼 / 复杂问题解决",
- [追踪钟表匠遗产线索，整合多方信息，识别梦境异常及背后的控制机制。],
- [承接米哈伊尔的意志，与伙伴共同打破秩序之梦，为梦中众人争取醒来的选择。])
-#stop("05", "翁法罗斯逐火行动与危机应对", "翁法罗斯 / 多方协作",
- [与黄金裔同行，调查逐火之旅及轮回背后的真相，参与应对铁墓威胁。],
- [配合列车组与银河联军开展内外协同，参与铁墓决战，推进共同作战目标。])
-#stop("06", "二相乐园危机应对", "二相乐园 / 应急协调",
- [应对归寂引发的危机，与列车组及当地伙伴协同行动，推进现场救援与风险处置。],
- [在兽蜕苏醒、乐园面临威胁时承接领航职责，协同列车组搭载避难民众撤离。])
+// 空数组不留标题或空白占位。其余字段按原有字号自然排版。
+#if profile.facts.len() > 0 {
+ v(3mm)
+ block(stroke: (top: 0.6pt + gold, bottom: 0.6pt + gold), inset: (y: 2.5mm))[
+  #grid(columns: (1fr,) * calc.min(profile.facts.len(), 3), column-gutter: 4mm, row-gutter: 2.5mm,
+   ..profile.facts.map(item => fact(item.title, item.en, item.body)))
+ ]
+}
+
+#let section-number = 0
+#if profile.paths.len() > 0 {
+ section-number += 1
+ section(numbering("01", section-number), profile.sections.paths.title, profile.sections.paths.en)
+ block(inset: 2.5mm)[
+  #grid(columns: (28mm, 1fr), column-gutter: 3mm, row-gutter: 1.6mm, align: horizon,
+   ..profile.paths.map(item => path-row(item.title, item.body)).flatten())
+ ]
+}
+#if profile.skills.len() > 0 {
+ section-number += 1
+ section(numbering("01", section-number), profile.sections.skills.title, profile.sections.skills.en)
+ grid(columns: (1fr, 1fr), column-gutter: 4mm, row-gutter: 2.5mm,
+  ..profile.skills.map(item => skill(item.title, item.subtitle, item.body)))
+}
+#if profile.projects.len() > 0 {
+ section-number += 1
+ section(numbering("01", section-number), profile.sections.projects.title, profile.sections.projects.en)
+ for (index, item) in profile.projects.enumerate() {
+  stop(numbering("01", index + 1), item.title, item.tag, item.duty, item.outcome)
+ }
+}

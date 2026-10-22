@@ -4,6 +4,12 @@
 
 制作新角色或继续修改时，可使用[简历制作提示词与检查清单](PROMPT.md)，其中汇总了本项目的内容改写、排版、素材保真与交付要求。
 
+## 在线制作
+
+[打开在线编辑器](https://mengmengjiang1999.github.io/astral-express-resumes/)，选择开拓者简历或扩列条，切换深浅配色，修改文字、头像与二维码，预览并下载 PDF / PNG。扩列条随内容自动伸缩，简历保持单页 A4；资料与图片仅在浏览器本机处理，无需登录。
+
+可通过“保存资料 / 导入资料”继续编辑。开发及 GitHub Pages 发布说明见 [web/README.md](web/README.md)。
+
 ## 查看与下载
 
 | 角色 | PDF | 预览 | 编辑说明 |
@@ -46,11 +52,11 @@ python -m pip install -r requirements.txt
 python scripts/build.py
 ```
 
-开拓者：修改 `trailblazer/main.typ` 中的内容，以及 `trailblazer/template.typ` 中的版式。使用 Typst CLI 编译；字体要求见角色目录内的 README。
+开拓者：修改 `trailblazer/config/profile.json` 中的内容，以及 `trailblazer/template.typ` 中的版式。使用仓库随附的 Noto 字体编译，保证与在线编辑器一致。
 
 ```sh
 cd trailblazer
-typst compile main.typ stelle-cv.pdf
+typst compile --font-path ../trailblazer-social-strip/assets/fonts --ignore-system-fonts main.typ stelle-cv.pdf
 ```
 
 浅色版在 `trailblazer-light/` 中独立维护，编译方式相同；`template.typ` 和 `assets/frame.svg` 定义浅色配色。[600 dpi 高清图](trailblazer-light/stelle-cv-600dpi.png) 可直接下载。

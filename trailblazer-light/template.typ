@@ -6,16 +6,16 @@
 // Light palette; preserve the original content, hierarchy, and layout.
 #let sizes = (body: 9.2pt, item: 11pt, project: 11.5pt, section: 16pt, small: 7.5pt)
 #let spacing = (section: 3.5mm, section-content: 2.2mm, project: 3.5mm)
-#let resume(body) = {
+#let resume(profile, body) = {
  set document(title: "无名客档案 · 星穹列车", author: "非官方同人创作")
  set page(paper: "a4", margin: (x: 17mm, top: 15mm, bottom: 15mm), fill: rgb("FAF8F2"),
  background: image("assets/frame.svg", width: 100%, height: 100%),
  footer-descent: 0mm,
  footer: [#line(length: 100%, stroke: 0.5pt + gold)
  #v(2.5mm)#grid(columns: (1fr, auto), align: horizon,
-  text(size: 9pt, fill: gold, font: ("Songti SC", "Noto Serif CJK SC"))[愿此行，终抵群星。],
+  text(size: 9pt, fill: gold, font: "Noto Serif CJK SC", profile.closing),
   text(size: 7pt, fill: gold)[AE — 001　 /　01])])
- set text(font: ("PingFang SC", "Noto Sans CJK SC", "Arial Unicode MS"), size: sizes.body, fill: ink, lang: "zh")
+ set text(font: "Noto Sans SC", size: sizes.body, fill: ink, lang: "zh")
  set par(leading: 0.45em, spacing: 0pt)
  set block(spacing: 0pt)
  body
@@ -30,7 +30,7 @@
    text(size: sizes.small, tracking: 0.5pt, fill: gold, en))
  ]
 }
-#let stop(n, title, tag, duty, outcome) = block(breakable: false, below: spacing.project)[
+#let stop(n, title, tag, duty, outcome) = block(breakable: true, below: spacing.project)[
  #grid(columns: (9mm, 1fr), column-gutter: 2mm,
   text(fill: gold, size: sizes.project, weight: "bold", n),
   [#grid(columns: (1fr, auto), column-gutter: 2mm, align: horizon,
@@ -58,20 +58,21 @@
  #h(1.5mm)#text(size: 8pt, fill: muted, subtitle)
  #v(1.3mm)#text(size: sizes.body, body)
 ]
-#let header(uid) = {
+#let header(profile) = {
+ let uid = profile.uid
  grid(columns: (1fr, 31mm), column-gutter: 7mm, align: horizon,
   [#grid(columns: (54mm, 1fr), column-gutter: 6mm, align: horizon,
-   [#text(size: 34pt, weight: "bold", font: ("Songti SC", "Noto Serif CJK SC"))[开拓者]
+   [#text(size: 34pt, weight: "bold", font: "Noto Serif CJK SC", profile.name)
     #v(3mm)
     #text(size: 10pt, fill: gold)[UID: #if uid == "" [#box(width: 30mm)[#line(length: 100%, stroke: 0.4pt + gold)]] else [#uid]]
-    #v(2.5mm)#text(size: 9pt, fill: muted)[星穹列车 · 无名客]
+    #v(2.5mm)#text(size: 9pt, fill: muted, profile.identity)
    ],
    block(stroke: (left: 1.5pt + red), inset: (left: 4mm, y: 1mm))[
     #text(size: 9pt, fill: muted)[求职意向]
-    #v(2.5mm)#text(size: 12.5pt, weight: "bold")[项目执行 / 危机应对]
-    #v(2.5mm)#text(size: 9pt, fill: gold)[具备跨世界行动经验]
+    #v(2.5mm)#text(size: 12.5pt, weight: "bold", profile.job_title)
+    #v(2.5mm)#text(size: 9pt, fill: gold, profile.job_note)
    ])],
   block(stroke: 0.7pt + gold, inset: 1.5mm, fill: rgb("E8E0D0"))[
-   #image("assets/stelle-id.png", width: 27mm, height: 40.5mm, fit: "contain")
+   #image(profile.at("portrait", default: "assets/stelle-id.png"), width: 27mm, height: 40.5mm, fit: "contain")
   ])
 }

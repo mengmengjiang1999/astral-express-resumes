@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f3eb" />
+    <meta name="description" content="在线制作开拓者简历与漫展扩列条。深浅配色、自适应长条、浏览器本地预览与 PDF / PNG 下载。" />
+    <title>星穹列车 · 简历与扩列条</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="星穹列车编辑器首页"><span class="brand-star" aria-hidden="true">✦</span><span>星穹列车<span class="brand-en">ASTRAL EXPRESS · PAPER STUDIO</span></span></a>
+      <a class="repo-link" href="https://github.com/mengmengjiang1999/astral-express-resumes" target="_blank" rel="noreferrer">模板仓库 <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="intro">
+        <div><p class="eyebrow">为下一段同行，留一张名片</p><h1>愿此行，终抵群星<span class="heading-star" aria-hidden="true">✦</span></h1><p class="intro-copy">把喜欢的事物与旅途经历，写进属于你的列车档案。</p></div>
+        <div class="privacy-note"><span class="small-star" aria-hidden="true">✧</span> 文字和图片仅在本机处理<br><span>无需登录 · 免费下载</span></div>
+      </section>
+      <div class="workspace">
+        <aside class="editor-panel" aria-label="编辑内容">
+          <div class="panel-heading"><span class="eyebrow">01 / YOUR DETAILS</span><h2>填写你的档案</h2></div>
+          <div class="settings">
+            <div class="control-group"><span class="control-label" id="kind-label">选择模板</span><div class="segmented" role="group" aria-labelledby="kind-label"><button type="button" data-kind="strip" aria-pressed="true">漫展扩列条</button><button type="button" data-kind="resume" aria-pressed="false">开拓者简历</button></div></div>
+            <div class="control-group"><span class="control-label" id="theme-label">纸张配色</span><div class="theme-options" role="group" aria-labelledby="theme-label"><button type="button" data-theme="light" aria-pressed="true"><i class="swatch light"></i>暖白 · 浅色</button><button type="button" data-theme="dark" aria-pressed="false"><i class="swatch dark"></i>炭灰 · 深色</button></div></div>
+            <div id="presets" class="preset-row"><label for="preset">内容示例</label><select id="preset"><option value="default">标准版</option><option value="short">简短版</option><option value="long">详细版</option></select><button type="button" id="apply-preset" class="text-button">载入示例</button></div>
+          </div>
+          <form id="editor-form" novalidate></form>
+          <div class="draft-actions"><button type="button" id="save-draft" class="secondary-button">保存资料</button><button type="button" id="load-draft" class="secondary-button">导入资料</button><input id="draft-file" type="file" accept="application/json,.json" hidden /></div>
+          <p class="form-footnote">资料不会自动保存。离开前可「保存资料」，下次导入继续编辑。</p>
+        </aside>
+        <section class="preview-panel" aria-label="成品预览">
+          <div class="preview-heading"><div><span class="eyebrow">02 / LIVE PREVIEW</span><h2>你的同行凭证</h2></div><span id="dimensions" class="dimension-badge">80 mm · 高度自适应</span></div>
+          <div class="preview-toolbar"><button type="button" id="refresh" class="secondary-button">更新预览</button><label class="auto-label"><input type="checkbox" id="auto-preview" checked />自动预览</label><span class="preview-hint">空白条目会自动隐藏</span></div>
+          <div id="status" class="status" role="status" aria-live="polite">正在准备编辑器…</div>
+          <div id="preview-stage" class="preview-stage" aria-busy="true"><div id="empty-preview" class="empty-preview"><span aria-hidden="true">✦</span><p>正在准备你的列车档案</p><small>首次使用需要加载中文字体，之后编辑会更快。</small></div><img id="preview-image" alt="当前填写内容的成品预览" hidden /></div>
+          <div class="export-bar"><div><strong>带上它，开启下一站</strong><p id="export-note">PDF 适合打印，PNG 适合分享。</p></div><div class="export-actions"><button type="button" id="download-pdf" class="secondary-button" disabled>下载 PDF</button><button type="button" id="download-png" class="primary-button" disabled>下载 PNG <span aria-hidden="true">↓</span></button></div></div>
+        </section>
+      </div>
+    </main>
+    <footer class="site-footer"><span>ASTRAL EXPRESS <span aria-hidden="true">✦</span> 非官方同人模板</span><span>角色与游戏素材版权归原权利人所有 · 简历示例含剧情内容</span></footer>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
